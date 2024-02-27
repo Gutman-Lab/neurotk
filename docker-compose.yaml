@@ -1,0 +1,12 @@
+# Add services.
+services:
+  dash:
+    build: app/
+    volumes:
+      - ./app:/app
+    restart: always
+    ports:
+      - 8050:8050
+    env_file:
+      - .env
+    command: ["python", "app.py"]
