@@ -1,23 +1,14 @@
-# Header component.
-from dash import html
-from os import getenv
+"""The component containing the toggle between dataview and datatable."""
 import dash_mantine_components as dmc
+import dash_bootstrap_components as dbc
+from dash import html
 
-header = html.Div(
-    [
-        html.H4(
-            "NeuroTK",
-            style={
-                "color": getenv("COOL_GRAY_1"),
-                "fontSize": 30,
-                "fontWeight": "bold",
-                "margin-right": 50
-            },
-        ),
-        dmc.Tabs(
+dataview = html.Div([
+    dmc.Tabs(
             [
                 dmc.TabsList(
                     [
+                        dmc.Tab("Table", value="images-tab", style={"color": "white"}),
                         dmc.Tab("Images", value="images-tab", style={"color": "white"}),
                     ],
                 ),
@@ -34,6 +25,11 @@ header = html.Div(
             # inverted=True,
             # variant="pills",
         ),
-    ],
-    style={"background-color": getenv("EMORY_BLUE"), "display": "flex"},
+], style={'display': 'flex'})
+
+dmc.Switch(
+    size="lg",
+    radius="sm",
+    label="Enable this option",
+    checked=True
 )
