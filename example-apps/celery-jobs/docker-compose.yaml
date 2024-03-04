@@ -1,0 +1,64 @@
+services:
+
+  fastapi:
+    build: pythonApps/
+    platform: linux/amd64
+    env_file:
+      - .env
+    volumes:
+      - ./pythonApps/:/app
+    ports:
+      - 8000:8000
+    command:
+      [
+        "uvicorn",
+        "main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--reload"
+      ]
+
+  dash:
+    build: pythonApps/
+    volumes:
+      - ./pythonApps:/app
+    env_file:
+      - .env
+    ports:
+      - 8050:8050
+    command: python dashapp.py
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - fastapi
+
+  worker:
+    build: pythonApps/
+    command: celery -A worker.celery worker --loglevel=info
+    volumes:
+      - ./pythonApps:/app
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - dash
+      - redis
+
+  redis:
+    image: redis:7
+
+  dashboard:
+    build: pythonApps/
+    command: celery --broker=redis://redis:6379/0 flower --port=5555
+    ports:
+      - 5555:5555
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - dash
+      - redis
+      - worker

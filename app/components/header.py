@@ -9,30 +9,10 @@ header = html.Div(
             "NeuroTK",
             style={
                 "color": getenv("COOL_GRAY_1"),
-                "fontSize": 50,
+                "fontSize": 30,
                 "fontWeight": "bold",
+                "margin-right": 50
             },
-        ),
-        dmc.Tabs(
-            [
-                dmc.TabsList(
-                    [
-                        dmc.Tab("Images", value="images-tab", style={"color": "red"}),
-                    ],
-                    style={"fontColor": "red"},
-                ),
-                dmc.TabsPanel(
-                    html.Div(
-                        "Images tab content.",
-                    ),
-                    value="projects",
-                ),
-            ],
-            orientation="horizontal",
-            value="images-tab",
-            color=getenv("LIGHT_BLUE"),
-            # inverted=True,
-            # variant="pills",
         ),
     ],
     style={"background-color": getenv("EMORY_BLUE"), "display": "flex"},
