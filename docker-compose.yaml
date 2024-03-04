@@ -9,4 +9,4 @@ services:
       - 8050:8050
     env_file:
       - .env
-    command: ["python", "app.py"]
+    command: python app.py
