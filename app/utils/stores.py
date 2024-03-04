@@ -43,6 +43,10 @@ def get_projects() -> list[dict[str, str]]:
                         else:
                             other_projects.append(project)
 
+            # Sort each alphabetically.
+            user_projects.sort(key=lambda x: x["label"].split("/")[1])
+            other_projects.sort(key=lambda x: x["label"].split("/")[1])
+
             user_projects.extend(other_projects)
 
             return user_projects

@@ -3,7 +3,8 @@
 import dash_mantine_components as dmc
 import dash_bootstrap_components as dbc
 from dash import html
-from components.dataview.dataview_table import dataview_table
+from components.projects_and_tasks_tab.dataview_image import dataview_images
+from components.projects_and_tasks_tab.dataview_table import dataview_table
 
 dataview = html.Div(
     [
@@ -27,9 +28,7 @@ dataview = html.Div(
                     value="dataview-table-tab",
                 ),
                 dmc.TabsPanel(
-                    html.Div(
-                        "Dataview component.",
-                    ),
+                    dataview_images,
                     value="dataview-images-tab",
                 ),
             ],

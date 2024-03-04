@@ -4,7 +4,7 @@ services:
     build: app/
     volumes:
       - ./app:/app
-    restart: always
+    # restart: always
     ports:
       - 8050:8050
     env_file:
