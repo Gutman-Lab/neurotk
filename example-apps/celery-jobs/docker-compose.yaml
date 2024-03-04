@@ -1,0 +1,42 @@
+services:
+
+  dash:
+    build: pythonApps/
+    volumes:
+      - ./pythonApps:/app
+    env_file:
+      - .env
+    ports:
+      - 8050:8050
+    command: python dashapp.py
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+
+  # web:
+  #   build: .
+  #   ports:
+  #     - 8004:8000
+  #   command: uvicorn main:app --host 0.0.0.0 --reload
+  #   volumes:
+  #     - ./project:./project/
+  #   environment:
+  #     - CELERY_BROKER_URL=redis://redis:6379/0
+  #     - CELERY_RESULT_BACKEND=redis://redis:6379/0
+  #   depends_on:
+  #     - redis
+
+  # worker:
+  #   build: .
+  #   command: celery -A worker.celery worker --loglevel=info
+  #   volumes:
+  #     - ./project:/usr/src/app
+  #   environment:
+  #     - CELERY_BROKER_URL=redis://redis:6379/0
+  #     - CELERY_RESULT_BACKEND=redis://redis:6379/0
+  #   depends_on:
+  #     - web
+  #     - redis
+
+  # redis:
+  #   image: redis:7
