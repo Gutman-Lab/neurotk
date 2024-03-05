@@ -37,18 +37,18 @@ task_selection = html.Div(
                     align="end",
                     width="auto",
                 ),
-                dbc.Col(
-                    html.Div(
-                        dbc.Button(
-                            "Delete selected task",
-                            id="delete-task",
-                            color="danger",
-                            className="me-1",
-                        )
-                    ),
-                    align="end",
-                    width="auto",
-                ),
+                # dbc.Col(
+                #     html.Div(
+                #         dbc.Button(
+                #             "Delete selected task",
+                #             id="delete-task",
+                #             color="danger",
+                #             className="me-1",
+                #         )
+                #     ),
+                #     align="end",
+                #     width="auto",
+                # ),
             ]
         ),
         # create_task_popup,

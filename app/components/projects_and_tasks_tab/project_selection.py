@@ -31,18 +31,18 @@ project_selection = html.Div(
                     align="end",
                     width="auto",
                 ),
-                dbc.Col(
-                    html.Div(
-                        dbc.Button(
-                            "Delete selected project",
-                            id="delete-project",
-                            color="danger",
-                            className="me-1",
-                        )
-                    ),
-                    align="end",
-                    width="auto",
-                ),
+                # dbc.Col(
+                #     html.Div(
+                #         dbc.Button(
+                #             "Delete selected project",
+                #             id="delete-project",
+                #             color="danger",
+                #             className="me-1",
+                #         )
+                #     ),
+                #     align="end",
+                #     width="auto",
+                # ),
             ]
         ),
         create_project_menu,
