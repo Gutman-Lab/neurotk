@@ -1,10 +1,12 @@
 import dash_bootstrap_components as dbc
 import dash_mantine_components as dmc
 from dash import html, Output, Input, State, callback, no_update, ctx
-from utils.utils import get_current_user
-from utils.stores import get_projects
 from os.path import join
 from os import getenv
+
+from utils.utils import get_current_user
+from utils.stores import get_projects
+from utils.mongo_utils import add_one_to_collection
 
 create_project_menu = dbc.Modal(
     [
@@ -86,18 +88,27 @@ def open_create_project_popup(n_clicks: int, projects_dropdown):
         Output("create-project-alert", "children"),
         Output("new-project-name", "value"),
     ],
-    Input("create-project-bn2", "n_clicks"),
+    [
+        Input("create-project-bn2", "n_clicks"),
+        Input("resync-project-list-btn", "n_clicks"),
+    ],
     State("new-project-name", "value"),
     State("projects-dropdown-store", "data"),
     State("project-type-toggle", "checked"),
     # prevent_initial_call=True,
 )
-def create_new_project(n_clicks, new_project_name, projects, type_toggle):
+def create_new_project(n_clicks, resync_click, new_project_name, projects, type_toggle):
     """
     Logic for creating a new project.
 
     """
-    if n_clicks and new_project_name:
+    # Use callback context to decide on the logic.
+    context_id = ctx.triggered_id
+
+    if resync_click and context_id == "resync-project-list-btn":
+        # Resync the projects.
+        return get_projects(resync=True), "", ""
+    elif n_clicks and new_project_name:
         # Find current username.
         gc, user = get_current_user()
 
@@ -133,8 +144,20 @@ def create_new_project(n_clicks, new_project_name, projects, type_toggle):
                                     new_project_fld["_id"], "Tasks", public=is_public
                                 )
 
+                                # Add this project to the collection.
+                                add_one_to_collection(
+                                    "projects",
+                                    {
+                                        "value": new_project_fld["_id"],
+                                        "label": f"{user}/{new_project_fld['name']}",
+                                    },
+                                    key="value",
+                                    user=user,
+                                )
+
                                 return get_projects(), "", ""
 
+    # This is the default return.
     return get_projects(), "", ""
 
 

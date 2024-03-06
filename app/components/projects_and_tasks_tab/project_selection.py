@@ -2,14 +2,25 @@ from dash import html, callback, Output, Input, State, no_update
 import dash_bootstrap_components as dbc
 from dash_mantine_components import Select
 from components.projects_and_tasks_tab.create_project_menu import create_project_menu
+from utils.utils import get_gc
+from utils.stores import get_project
 
 project_selection = html.Div(
     [
         dbc.Row(
             [
                 dbc.Col(
+                    dbc.Button(
+                        "Re-sync Project List",
+                        id="resync-project-list-btn",
+                        color="info",
+                        style={"width": "auto"},
+                        className="me-1",
+                    ),
+                    width="auto",
+                ),
+                dbc.Col(
                     html.Div("Select project: ", style={"fontWeight": "bold"}),
-                    align="start",
                     width="auto",
                 ),
                 dbc.Col(
@@ -75,3 +86,17 @@ def update_projects_dropdown(projects: list[dict[str, str]], selected_project: s
         return projects, projects[0]["value"]
     else:
         return [], None
+
+
+@callback(
+    Output("project-store", "data"),
+    Input("projects-dropdown", "value"),
+    prevent_initial_call=True,
+)
+def update_projects_store(selected_project: str):
+    """Update the projects store."""
+    if selected_project:
+        print(selected_project)
+        return get_project(selected_project)[0]
+
+    return {}
