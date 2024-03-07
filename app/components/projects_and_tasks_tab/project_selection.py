@@ -2,8 +2,9 @@ from dash import html, callback, Output, Input, State, no_update
 import dash_bootstrap_components as dbc
 from dash_mantine_components import Select
 from components.projects_and_tasks_tab.create_project_menu import create_project_menu
-from utils.utils import get_gc
-from utils.stores import get_project
+from utils.utils import get_gc, get_current_user
+from utils.stores import get_project, get_projects
+from utils.mongo_utils import get_mongo_client
 
 project_selection = html.Div(
     [
@@ -89,14 +90,17 @@ def update_projects_dropdown(projects: list[dict[str, str]], selected_project: s
 
 
 @callback(
-    Output("project-store", "data"),
+    Output(
+        "project-store",
+        "data",
+        allow_duplicate=True,
+    ),
     Input("projects-dropdown", "value"),
     prevent_initial_call=True,
 )
 def update_projects_store(selected_project: str):
     """Update the projects store."""
     if selected_project:
-        print(selected_project)
         return get_project(selected_project)[0]
 
     return {}

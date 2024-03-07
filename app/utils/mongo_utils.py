@@ -31,6 +31,32 @@ def get_mongo_client():
     return mc[getenv("MONGODB_DB")]
 
 
+def add_one_task(project_id: str, task_item: dict):
+    """Add a single task to a database already created."""
+    mongo_collection = get_mongo_client()["projectStore"]
+
+    # Get the current store.
+    user = get_current_user()[1]
+    project_store = list(mongo_collection.find({"_id": project_id, "user": user}))[0]
+
+    # Add the task.
+    tasks = project_store.get("tasks", {})
+    tasks[task_item["name"]] = {"_id": task_item["_id"]}
+
+    tasks = {k: tasks[k] for k in sorted(tasks.keys())}
+
+    project_store["tasks"] = tasks
+
+    operations = [
+        pymongo.UpdateOne(
+            {"_id": project_store["_id"]}, {"$set": project_store}, upsert=True
+        )
+    ]
+
+    for chunk in chunks(operations):
+        _ = mongo_collection.bulk_write(chunk)
+
+
 def add_one_to_collection(
     collection_name, item: dict, key: str = "_id", user: str = None
 ):
@@ -85,3 +111,8 @@ def get_available_projects():
     #     print("Just return the current status of the project list.")
     # else:
     #     print("There are no project data - so get the data to return and add to db.")
+
+
+def get_annotation_doc(item_id: str, doc_name: str):
+    """Get the annotation document from the mongo database or from DSA.
+    If getting from DSA, save it to mongo database."""

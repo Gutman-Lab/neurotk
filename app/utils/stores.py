@@ -90,17 +90,20 @@ def get_projects(resync: bool = False) -> list[dict[str, str]]:
     return []
 
 
-def get_project(project_id: str):
+def get_project(project_id: str, resync: bool = False):
     """Get a specific project."""
-    mongo_collection = get_mongo_client()["projectStore"]
+    mongo_db = get_mongo_client()["projectStore"]
 
     gc, user = get_current_user()
 
     # Check if the data exists in mongo - if so return it.
-    project_store = list(mongo_collection.find({"_id": project_id, "user": user}))
+    project_store = list(mongo_db.find({"_id": project_id, "user": user}))
 
-    if project_store:
+    if project_store and not resync:
         return project_store
+
+    # Delete the current mongo document.
+    mongo_db.delete_many({"_id": project_id, "user": user})
 
     # Get the project from DSA, update mongodb and return.
     data = {"datasets": [], "tasks": {}, "images": {}, "_id": project_id}
@@ -131,4 +134,4 @@ def get_project(project_id: str):
 
     add_one_to_collection("projectStore", data, user=user)
 
-    return list(mongo_collection.find({"user": user, "_id": project_id}))
+    return list(mongo_db.find({"user": user, "_id": project_id}))

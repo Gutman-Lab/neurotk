@@ -2,6 +2,7 @@ import dash_mantine_components as dmc
 from os import getenv
 from dash import html
 from components.projects_and_tasks_tab import projects_and_tasks_tab
+from components.analysis_tab import analysis_tab
 
 tabs = html.Div(
     dmc.Tabs(
@@ -13,6 +14,11 @@ tabs = html.Div(
                         value="projects-and-tasks-tab",
                         style={"color": "white"},
                     ),
+                    dmc.Tab(
+                        "Analysis",
+                        value="analysis-tab",
+                        style={"color": "white"},
+                    ),
                 ],
                 style={"background-color": getenv("EMORY_BLUE")},
             ),
@@ -20,9 +26,11 @@ tabs = html.Div(
                 projects_and_tasks_tab,
                 value="projects-and-tasks-tab",
             ),
+            dmc.TabsPanel(analysis_tab, value="analysis-tab"),
         ],
         orientation="horizontal",
-        value="projects-and-tasks-tab",
+        value="analysis-tab",
         color=getenv("LIGHT_BLUE"),
+        variant="outline",
     )
 )

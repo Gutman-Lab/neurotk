@@ -5,8 +5,8 @@ from os.path import join
 from os import getenv
 
 from utils.utils import get_current_user
-from utils.stores import get_projects
-from utils.mongo_utils import add_one_to_collection
+from utils.stores import get_projects, get_project
+from utils.mongo_utils import add_one_to_collection, get_mongo_client
 
 create_project_menu = dbc.Modal(
     [
@@ -107,6 +107,14 @@ def create_new_project(n_clicks, resync_click, new_project_name, projects, type_
 
     if resync_click and context_id == "resync-project-list-btn":
         # Resync the projects.
+        mongo_db = get_mongo_client()["projectStore"]
+
+        mongo_db.delete_many({"user": get_current_user()[1]})
+
+        projects = get_projects(resync=True)
+
+        if len(projects):
+            _ = get_project(projects[0]["_id"])
         return get_projects(resync=True), "", ""
     elif n_clicks and new_project_name:
         # Find current username.
