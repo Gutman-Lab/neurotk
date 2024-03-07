@@ -1,5 +1,6 @@
 from girder_client import GirderClient
 
+
 def submit_cli_job(gc: GirderClient, task: str, data: list, params: dict, mask: str):
     if task == "PositivePixelCount":
         submit_ppc_job(gc, data, params, mask)
@@ -7,7 +8,7 @@ def submit_cli_job(gc: GirderClient, task: str, data: list, params: dict, mask: 
         print(f'Task "{task}" is not currently supported.')
 
 
-def submit_ppc_job(gc, data, params, mask_name = None):
+def submit_ppc_job(gc, data, params, mask_name=None):
     ppc_ext = "slicer_cli_web/dsarchive_histomicstk_latest/PositivePixelCount/run"
 
     # points = "[5000,5000,1000,1000]"
@@ -16,7 +17,7 @@ def submit_ppc_job(gc, data, params, mask_name = None):
     item = gc.get(f"item/{data['_id']}")
 
     cliInputData = {
-        "inputImageFile": item["largeImage"]["fileId"], 
+        "inputImageFile": item["largeImage"]["fileId"],
         "outputLabelImage": f"{item['name']}_ppc.tiff",
         "outputLabelImage_folder": "645a5fb76df8ba8751a8dd7d",
         "outputAnnotationFile": f"{item['name']}_ppc.anot",
@@ -24,30 +25,31 @@ def submit_ppc_job(gc, data, params, mask_name = None):
         "returnparameterfile": f"{item['name']}_ppc.params",
         "returnparameterfile_folder": "645a5fb76df8ba8751a8dd7d",
     }
-    
+
     # The region should not be estimated like this!
     cliInputData.update(params)
     # cliInputData["region"] = points
 
     if mask_name is None:
+        pass
         # NOTE: get the tile source and run on entire area.
     # else:
-        # Get the points based on the annotation, if it exists only though!
-        
+    # Get the points based on the annotation, if it exists only though!
+
     # if maskName:
-        # print("Should be fetching point set from", maskName, "for", item["_id"])
-        ## Lookup annotation data for this image..
-        # print(item)
-        ## TO DO.. what if there is more than one mask with the same name.. to be fixed
-        # maskPointSet = dbConn["annotationData"].find_one(
-        #     {"itemId": item["_id"], "annotation.name": maskName},
-        #     {"annotation.elements": 1},
-        # )
+    # print("Should be fetching point set from", maskName, "for", item["_id"])
+    ## Lookup annotation data for this image..
+    # print(item)
+    ## TO DO.. what if there is more than one mask with the same name.. to be fixed
+    # maskPointSet = dbConn["annotationData"].find_one(
+    #     {"itemId": item["_id"], "annotation.name": maskName},
+    #     {"annotation.elements": 1},
+    # )
 
-        # if maskPointSet:
-        #     maskRegionPoints = get_points(maskPointSet["annotation"]["elements"])
+    # if maskPointSet:
+    #     maskRegionPoints = get_points(maskPointSet["annotation"]["elements"])
 
-        #     cliInputData["region"] = maskRegionPoints
+    #     cliInputData["region"] = maskRegionPoints
     #         else:
     #             return {
     #                 "status": "FAILED",
