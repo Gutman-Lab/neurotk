@@ -7,59 +7,80 @@ from os import getenv
 import pandas as pd
 
 dataview_table = dbc.Spinner(
-    html.Div(
+    AgGrid(
         id="dataview-table",
-        style={"width": "90vw"},
+        enableEnterpriseModules=True,
+        columnDefs=[],
+        rowData=[],
+        style={"height": "75vh", "width": "90vw"},
+        dashGridOptions={
+            "pagination": True,
+            "paginationPageSizeSelector": False,
+            "animateRows": False,
+        },
     )
 )
 
 
-@callback(Output("projects-store", "data"), Input("projects-dropdown", "value"))
-def update_projects_store(selected_project: str):
-    """Update the projects store."""
-    if selected_project:
-        # Get the info from the project store.
-        gc = GirderClient(apiUrl=getenv("DSA_API_URL"))
-        gc.authenticate(apiKey=getenv("DSA_API_TOKEN"))
-
-        data = {"datasets": {}, "tasks": {}}
-
-        # List the information in this DSA folder.
-        for fld in gc.listFolder(selected_project):
-            if fld["name"] == "Datasets":
-                # This should be folder metadata.
-                data["datasets"] = fld.get("meta", {})
-            elif fld["name"] == "Tasks":
-                # List the items, which are the task info.
-                for item in gc.listItem(fld["_id"]):
-                    data["tasks"][item["name"]] = item.get("meta", {})
-
-        return data
-
-    return {}
-
-
-@callback(Output("dataview-table", "children"), Input("projects-store", "data"))
-def update_dataview_table(data: dict):
+@callback(
+    [Output("dataview-table", "columnDefs"), Output("dataview-table", "rowData")],
+    [Input("dataview-store", "data")],
+    prevent_initial_call=True,
+)
+def update_dataview_table(data_store: list[dict]):
     """Update the dataview table."""
-    if data:
-        # Loop through the datasets.
-        items = []
+    # Convert to dataframe.
+    df = pd.json_normalize(data_store, sep="-")
 
-        for dataset_name, dataset_items in data.get("datasets", {}).items():
-            items.extend(dataset_items)
+    cols = list(df.columns)
 
-        # Format into dataframe.
-        df = pd.json_normalize(items, sep="-")
+    # Always put the filename and id first.
+    cols_org = []
 
-        return AgGrid(
-            columnDefs=[{"field": col} for col in df.columns],
-            rowData=df.to_dict("records"),
-            dashGridOptions={
-                "pagination": True,
-                "paginationAutoPageSize": True,
-            },
-            style={"height": "75vh"},
-        )
+    if "name" in cols:
+        cols_org.append("name")
+        cols.remove("name")
 
-    return AgGrid(rowData=[], columnDefs=[])
+    if "_id" in cols:
+        cols_org.append("_id")
+        cols.remove("_id")
+
+    cols_org.extend(cols)
+
+    # Create col defs
+    col_defs = []
+
+    for col in cols_org:
+        if col in ("_id", "name"):
+            col_defs.append({"field": col})
+        else:
+            # Allow filtering and sorting.
+            col_defs.append(
+                {"field": col, "filter": "agSetColumnFilter", "sortable": True}
+            )
+
+    # Return the column defs and rows.
+    return col_defs, df.to_dict("records")
+
+
+#     if data:
+#         # Loop through the datasets.
+#         items = []
+
+#         for dataset_name, dataset_items in data.get("datasets", {}).items():
+#             items.extend(dataset_items)
+
+#         # Format into dataframe.
+#         df = pd.json_normalize(items, sep="-")
+
+#         return AgGrid(
+#             columnDefs=[{"field": col} for col in df.columns],
+#             rowData=df.to_dict("records"),
+#             dashGridOptions={
+#                 "pagination": True,
+#                 "paginationAutoPageSize": True,
+#             },
+#             style={"height": "75vh"},
+#         )
+
+# return AgGrid(rowData=[], columnDefs=[])

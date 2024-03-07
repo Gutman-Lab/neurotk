@@ -2,14 +2,26 @@ from dash import html, callback, Output, Input, State, no_update
 import dash_bootstrap_components as dbc
 from dash_mantine_components import Select
 from components.projects_and_tasks_tab.create_project_menu import create_project_menu
+from utils.utils import get_gc, get_current_user
+from utils.stores import get_project, get_projects
+from utils.mongo_utils import get_mongo_client
 
 project_selection = html.Div(
     [
         dbc.Row(
             [
                 dbc.Col(
+                    dbc.Button(
+                        "Re-sync Project List",
+                        id="resync-project-list-btn",
+                        color="info",
+                        style={"width": "auto"},
+                        className="me-1",
+                    ),
+                    width="auto",
+                ),
+                dbc.Col(
                     html.Div("Select project: ", style={"fontWeight": "bold"}),
-                    align="start",
                     width="auto",
                 ),
                 dbc.Col(
@@ -31,18 +43,18 @@ project_selection = html.Div(
                     align="end",
                     width="auto",
                 ),
-                dbc.Col(
-                    html.Div(
-                        dbc.Button(
-                            "Delete selected project",
-                            id="delete-project",
-                            color="danger",
-                            className="me-1",
-                        )
-                    ),
-                    align="end",
-                    width="auto",
-                ),
+                # dbc.Col(
+                #     html.Div(
+                #         dbc.Button(
+                #             "Delete selected project",
+                #             id="delete-project",
+                #             color="danger",
+                #             className="me-1",
+                #         )
+                #     ),
+                #     align="end",
+                #     width="auto",
+                # ),
             ]
         ),
         create_project_menu,
@@ -75,3 +87,20 @@ def update_projects_dropdown(projects: list[dict[str, str]], selected_project: s
         return projects, projects[0]["value"]
     else:
         return [], None
+
+
+@callback(
+    Output(
+        "project-store",
+        "data",
+        allow_duplicate=True,
+    ),
+    Input("projects-dropdown", "value"),
+    prevent_initial_call=True,
+)
+def update_projects_store(selected_project: str):
+    """Update the projects store."""
+    if selected_project:
+        return get_project(selected_project)[0]
+
+    return {}
