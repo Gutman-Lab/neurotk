@@ -14,7 +14,7 @@ from config import AVAILABLE_CLI_TASKS
 from pathlib import Path
 
 from utils.cli_functions import submit_cli_job
-from utils.utils import read_xml_content, get_gc
+from utils.utils import read_xml_content, get_current_user
 from utils import generate_cli_input_components
 
 # Constants
@@ -210,6 +210,23 @@ def update_cli_input_panel(
 
 
 @callback(
+    Output("mask-name-for-cli", "style"),
+    [Input("cli-select", "value")],
+    prevent_initial_call=True,
+)
+def toggle_mask_name_visibility(selected_cli):
+    """Some CLI tasks don't require an ROI / mask input. So hide it when
+    this is specified. In configs.py is where we specify this for each task."""
+    if selected_cli:
+        if AVAILABLE_CLI_TASKS[selected_cli]["roi"]:
+            return {"display": "block", "maxWidth": 300}
+        else:
+            return {"display": "none", "maxWidth": 300}
+    else:
+        return {"display": "none", "maxWidth": 300}
+
+
+@callback(
     output=Output("submitting-clis-stats", "children"),
     inputs=[
         Input("cli-submit-button", "n_clicks"),
@@ -223,15 +240,28 @@ def update_cli_input_panel(
 def submit_cli_tasks(
     n_clicks, dataview_table_rows, selected_cli: str, cli_params: dict, mask_name: str
 ):
-    gc = get_gc()
-
     if n_clicks:
+        # Get the girder client and user once to pass to every iteration.
+        gc, user = get_current_user()
+
+        kwargs = {
+            "gc": gc,
+            "user": user,
+            "cli": selected_cli,
+            "params": cli_params,
+            "roi": mask_name,
+        }
+
         # Queue the tasks.
         # NOTE: we need to grab the subset of the data!
 
-        for i, data in enumerate(dataview_table_rows):
-            submit_cli_job(gc, selected_cli, data, cli_params, mask_name)
+        responses = []
 
+        for i, row_data in enumerate(dataview_table_rows):
+            kwargs["item_id"] = row_data["_id"]
+            responses.append(submit_cli_job(**kwargs))
+
+            print(responses[0]["status"])
             break
     return html.Div()
 
