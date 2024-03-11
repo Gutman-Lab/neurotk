@@ -37,8 +37,14 @@ CLI_OUTPUT_STYLE = {
 cli_button_controls = html.Div(
     [
         html.Button(
-            "Submit CLI",
+            "Run Jobs",
             id="cli-submit-button",
+            className="mr-2 btn btn-warning",
+            disabled=True,
+        ),
+        html.Button(
+            "Run & Re-run Failed Jobs",
+            id="cli-submit-button-failed",
             className="mr-2 btn btn-warning",
             disabled=True,
         ),
@@ -47,11 +53,7 @@ cli_button_controls = html.Div(
             className="mr-2 btn btn-danger",
             children="Cancel Running Job!",
             disabled=True,
-        ),
-        dbc.Progress(
-            id="job-submit-progress-bar",
-            className="progress-bar-success",
-            style={"visibility": "hidden"},
+            style={"display": "none"},
         ),
     ],
     className="d-grid gap-2 d-md-flex justify-content-md-begin",
@@ -62,20 +64,16 @@ cli_button_controls = html.Div(
 def create_cli_selector():
     return dbc.Container(
         [
-            # dcc.Store(id="cliItems_store"),
-            dcc.Store(id="current-cli-params", data={}),
-            # dcc.Store(id="taskJobQueue_store", data={}),
-            # dcc.Store(id="cliImageList_store", data={}),
             dbc.Row(
                 [
                     dmc.Select(
-                        label="Select CLI",
+                        label="Analysis Workflow",
                         id="cli-select",
                         data=list(AVAILABLE_CLI_TASKS.keys()),
                         style={"maxWidth": 300},
                     ),
                     dmc.Select(
-                        label="Image Mask Name",
+                        label="ROI Annotation Document",
                         id="mask-name-for-cli",
                         value="gray-matter-from-xmls",
                         data=[
@@ -137,12 +135,19 @@ def update_json_output(*args):
     return result
 
 
-@callback(Output("cli-submit-button", "disabled"), Input("tasks-dropdown", "value"))
+@callback(
+    [
+        Output("cli-submit-button", "disabled"),
+        Output("cli-submit-button-failed", "disabled"),
+    ],
+    Input("tasks-dropdown", "value"),
+    prevent_initial_call=True,
+)
 def toggle_cli_bn_state(selected_task):
     if selected_task:
-        return False
+        return False, False
     else:
-        return True
+        return True, True
 
 
 @callback(
@@ -230,17 +235,40 @@ def toggle_mask_name_visibility(selected_cli):
     output=Output("submitting-clis-stats", "children"),
     inputs=[
         Input("cli-submit-button", "n_clicks"),
+        Input("cli-submit-button-failed", "n_clicks"),
         State("dataview-table", "rowData"),
         State("cli-select", "value"),
         State("current-cli-params", "data"),
         State("mask-name-for-cli", "value"),
     ],
+    running=[
+        (
+            Output("cli-job-cancel-button", "style"),
+            {"display": "block"},
+            {"display": "none"},
+        )
+    ],
+    progress=(
+        Output("job-submit-progress-bar", "value"),
+        Output("job-submit-progress-bar", "label"),
+    ),
+    background=True,
     prevent_initial_call=True,
 )
 def submit_cli_tasks(
-    n_clicks, dataview_table_rows, selected_cli: str, cli_params: dict, mask_name: str
+    set_progress,
+    n_clicks,
+    n_clicked_failed,
+    dataview_table_rows,
+    selected_cli: str,
+    cli_params: dict,
+    mask_name: str,
 ):
-    if n_clicks:
+    if n_clicks or n_clicked_failed:
+        if ctx.triggered_id == "cli-submit-button-failed":
+            rerun = True
+        else:
+            rerun = False
         # Get the girder client and user once to pass to every iteration.
         gc, user = get_current_user()
 
@@ -250,19 +278,26 @@ def submit_cli_tasks(
             "cli": selected_cli,
             "params": cli_params,
             "roi": mask_name,
+            "rerun": rerun,
         }
 
-        # Queue the tasks.
-        # NOTE: we need to grab the subset of the data!
-
         responses = []
+
+        # NOTE: For debugging, only run the first 10 rows.
+        dataview_table_rows = dataview_table_rows[:10]
+
+        n_rows = len(dataview_table_rows)
 
         for i, row_data in enumerate(dataview_table_rows):
             kwargs["item_id"] = row_data["_id"]
             responses.append(submit_cli_job(**kwargs))
 
-            print(responses[0]["status"])
-            break
+            v = (i + 1) / n_rows * 100
+            set_progress((v, f"{v:.2f}%"))
+
+        print("Status returned")
+        print(responses)
+
     return html.Div()
 
 

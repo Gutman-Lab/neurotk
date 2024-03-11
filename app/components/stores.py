@@ -1,5 +1,6 @@
-from dash import dcc, html, callback, Output, Input, State, no_update
-from utils.stores import get_projects
+from dash import dcc, html, callback, Output, Input
+from utils.utils import get_current_user
+from os import getenv
 
 stores = html.Div(
     [
@@ -7,15 +8,14 @@ stores = html.Div(
         dcc.Store(id="project-store", data={}),
         dcc.Store(id="dataview-store", data=[]),
         dcc.Store(id="datasets-store", data={}),
+        dcc.Store(id="current-cli-params", data={}),
     ]
 )
 
 
 @callback(Output("datasets-store", "data"), Input("datasets-store", "clear_data"))
 def initiate_dataset_store(_):
-    from utils.utils import get_current_user
-    from os import getenv
-
+    """Initiate the dataset store."""
     gc, user = get_current_user()
 
     # Get the dataset directory.

@@ -13,6 +13,7 @@ def submit_cli_job(
     gc: GirderClient | None = None,
     user: str | None = None,
     roi: str | None = None,
+    rerun: bool = False,
 ):
     """Submit one of the CLI tasks.
 
@@ -23,6 +24,7 @@ def submit_cli_job(
         gc: The GirderClient to use. Default is None and will be obtained.
         user: The user currently used.
         roi: Annotation document to use for region of analysis.
+        rerun: If True, will rerun the CLI task if it had prevously failed.
 
     """
     if gc is None:
@@ -49,7 +51,17 @@ def submit_cli_job(
             # 4: error = delete from mongo and run
             # 5: cancelled = delete from mongo and run
             if status in (0, 4, 5):
-                mongo_collection.delete_one({"_id": record["_id"]})
+                # Failed to run.
+                if rerun:
+                    # Delete and run it again.
+                    mongo_collection.delete_one({"_id": record["_id"]})
+                else:
+                    if status == 0:
+                        return {"status": "inactive", "girderResponse": job_response}
+                    elif status == 4:
+                        return {"status": "error", "girderResponse": job_response}
+                    else:
+                        return {"status": "cancelled", "girderResponse": job_response}
             elif status == 3:
                 return {"status": "success", "girderResponse": job_response}
             elif status == 1:
@@ -62,12 +74,6 @@ def submit_cli_job(
     else:
         print(f"This CLI task is not currently supported: {cli}")
         return "CLI not supported."
-    # if task == "PositivePixelCount":
-    #     submit_ppc_job(gc, data, params, mask)
-    # elif task == "TissueSegmentation":
-    #     return submit_tissue_detection(data, params, mask)
-    # else:
-    #     print(f'Task "{task}" is not currently supported.')
 
 
 def submit_tissue_detection(item_id, params):
