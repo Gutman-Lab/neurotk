@@ -310,21 +310,49 @@ def submit_cli_tasks(
         responses = []
 
         # NOTE: For debugging, only run the first 10 rows.
-        dataview_table_rows = dataview_table_rows[:10]
+        dataview_table_rows = dataview_table_rows[:100]
 
         n_rows = len(dataview_table_rows)
 
         for i, row_data in enumerate(dataview_table_rows):
             set_progress((str(i + 1), str(n_rows)))
             kwargs["item_id"] = row_data["_id"]
-            response = responses.append(submit_cli_job(**kwargs))
+            responses.append(submit_cli_job(**kwargs))
 
             # v = (i + 1) / n_rows * 100
             # set_progress((v, f"{v:.2f}%"))
+    # Return a pie chart of the status responses.
+    from collections import Counter
+    import pandas as pd
 
-            responses.append(response)
+    PIE_CHART_COLORS = dict(
+        error="rgb(255, 0, 0)",
+        cancelled="rgb(209, 207, 202)",
+        inactive="rgb(0, 255, 238)",
+        success="rgb(14, 153, 0)",
+        queued="rgb(0, 141, 255)",
+        running="rgb(0, 0, 255)",
+        exists="rgb(181, 215, 0)",
+        Submitted="rgb(255, 217, 0)",
+    )
 
-    return html.Div("Hello World")
+    statuses = Counter([x["status"] for x in responses])
+
+    df = []
+
+    for k, v in statuses.items():
+        df.append([k, v])
+
+    df = pd.DataFrame(df, columns=["Status", "Count"])
+
+    fig = px.pie(
+        df,
+        values="Count",
+        names="Status",
+        color="Status",
+        color_discrete_map=PIE_CHART_COLORS,
+    )
+    return dcc.Graph(figure=fig)
 
 
 # @callback()

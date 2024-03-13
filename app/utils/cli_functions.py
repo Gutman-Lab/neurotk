@@ -27,11 +27,6 @@ def submit_cli_job(
         rerun: If True, will rerun the CLI task if it had prevously failed.
 
     """
-    from time import sleep
-
-    sleep(1)
-
-    return {"status": "success", "girderResponse": None}
     if gc is None:
         gc = get_gc()
 
@@ -45,9 +40,14 @@ def submit_cli_job(
 
     if records:
         for record in records:
-            # Get the job response.
-            job_response = gc.get(f"job/{record['_id']}")
-            status = job_response.get("status")
+            # Get the status from database.
+            status = record.get("status")
+
+            # If the status is in 4 or 5 then it might be rerun.
+            if status is None or status not in (4, 5):
+                # Get the job response.
+                job_response = gc.get(f"job/{record['_id']}")
+                status = job_response.get("status")
 
             # 0: inactive = delete from mongo and run
             # 1: queued = skip
@@ -55,18 +55,18 @@ def submit_cli_job(
             # 3: success = delete from mongo, and skip
             # 4: error = delete from mongo and run
             # 5: cancelled = delete from mongo and run
-            if status in (0, 4, 5):
+            if status in (4, 5):
                 # Failed to run.
                 if rerun:
                     # Delete and run it again.
                     mongo_collection.delete_one({"_id": record["_id"]})
                 else:
-                    if status == 0:
-                        return {"status": "inactive", "girderResponse": job_response}
-                    elif status == 4:
+                    if status == 4:
                         return {"status": "error", "girderResponse": job_response}
                     else:
                         return {"status": "cancelled", "girderResponse": job_response}
+            elif status == 0:
+                return {"status": "inactive", "girderResponse": job_response}
             elif status == 3:
                 return {"status": "success", "girderResponse": job_response}
             elif status == 1:
@@ -96,7 +96,7 @@ def submit_tissue_detection(item_id, params):
 
     if records:
         # Found so return it!
-        return {"status": "Already Complete", "girderResponse": None}
+        return {"status": "exists", "girderResponse": None}
     else:
         # Check if the output file exists!
         annotation_docs = get_annotations_documents(
@@ -117,7 +117,7 @@ def submit_tissue_detection(item_id, params):
 
                 add_one_to_collection("annotations", doc, user=user)
 
-                return {"status": "Already Complete", "girderResponse": None}
+                return {"status": "exists", "girderResponse": None}
 
     # Could not find it anywhere, so submit the job.
     item = gc.get(f"item/{item_id}")
@@ -138,11 +138,11 @@ def submit_tissue_detection(item_id, params):
 
         add_one_to_collection("girderQueue", girder_response, user=user)
 
-        return {"status": "Submitted", "girderResponse": girder_response}
+        return {"status": "submitted", "girderResponse": girder_response}
 
     except HttpError as e:
         # Failed, return the error.
-        return {"status": "Failed", "girderResponse": e.response.json()}
+        return {"status": "error", "girderResponse": e.response.json()}
 
 
 def submit_ppc_job(gc, data, params, mask_name=None):
