@@ -23,11 +23,10 @@ def chunks(lst: list, n=500):
 def get_mongo_client():
     """Get the mongo client."""
     mc = pymongo.MongoClient(
-        getenv("MONGODB_URI"),
-        username=getenv("MONGODB_USERNAME"),
-        password=getenv("MONGODB_PASSWORD"),
+        f"mongodb://{getenv('MONGO_INITDB_ROOT_USERNAME')}:{getenv('MONGO_INITDB_ROOT_PASSWORD')}@mongodb:27017"
     )
 
+    # Return the specific database.
     return mc[getenv("MONGODB_DB")]
 
 

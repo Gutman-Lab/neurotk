@@ -60,31 +60,32 @@ task_selection = html.Div(
 )
 
 
-@callback(
-    Output("tasks-dropdown", "value", allow_duplicate=True),
-    Input("projects-dropdown", "value"),
-    prevent_initial_call=True,
-)
-def update_task_selection(selected_project: str):
-    """Update the task selection.
+# @callback(
+#     Output("tasks-dropdown", "value", allow_duplicate=True),
+#     [Input("projects-dropdown", "value")],
+#     prevent_initial_call=True,
+# )
+# def update_task_selection(selected_project: str):
+#     """Update the task selection.
 
-    Args:
-        selected_project (str): The selected project.
+#     Args:
+#         selected_project (str): The selected project.
 
-    Returns:
-        str: The selected task.
+#     Returns:
+#         str: The selected task.
 
-    """
-    if selected_project:
-        # If the project is changed - then set the task dropdown value to empty.
-        return None
+#     """
+#     if selected_project:
+#         # If the project is changed - then set the task dropdown value to empty.
+#         # Return the first one.
+#         return None
 
-    return None
+#     return None
 
 
 @callback(
     Output("tasks-dropdown", "data", allow_duplicate=True),
-    # Output("tasks-dropdown", "value"),
+    Output("tasks-dropdown", "value"),
     [
         Input("projects-dropdown", "value"),
     ],
@@ -116,23 +117,9 @@ def update_task_dropdown(selected_project: str) -> list[dict[str, str]]:
 
         options = [{"value": name, "label": name} for name in project_data["tasks"]]
 
-        return options
+        return options, None
 
-    return []
-    # if project_data:
-    #     # Check if there is a selected task.
-    #     options = [{"value": name, "label": name} for name in project_data["tasks"]]
-
-    #     # If the change happened because we created a new task - then select that new task.
-    #     if task_popup_state:
-    #         return options, new_task_name
-
-    #     # NOTE: the problem with this is that everytime the project store changes this will change.
-    #     # How to deal with this? Do a different type of check.
-
-    #     return options, None
-
-    # return [], None
+    return [], None
 
 
 @callback(

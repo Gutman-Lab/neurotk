@@ -10,4 +10,8 @@ RUN pip install --upgrade pip
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-RUN pip install "dash[diskcache]"
+RUN pip install -U "celery[redis,librabbitmq]"
+
+RUN pip install "dash[celery]"
+
+

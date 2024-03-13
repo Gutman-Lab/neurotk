@@ -12,6 +12,7 @@ from pandas import DataFrame
 import plotly.express as px
 from config import AVAILABLE_CLI_TASKS
 from pathlib import Path
+from pprint import pprint
 
 from utils.cli_functions import submit_cli_job
 from utils.utils import read_xml_content, get_current_user
@@ -52,7 +53,7 @@ cli_button_controls = html.Div(
             id="cli-job-cancel-button",
             className="mr-2 btn btn-danger",
             children="Cancel Running Job!",
-            disabled=True,
+            # disabled=True,
             style={"display": "none"},
         ),
     ],
@@ -99,13 +100,27 @@ def create_cli_selector():
                     ),
                     dbc.Col(
                         [
-                            dbc.Progress(
-                                value=0,
-                                id="submitting-clis-progress",
-                                style={"display": "block", "width": "50%"},
-                            ),
+                            html.Progress(id="submitting-clis-progress", value="0"),
                             html.Div(id="submitting-clis-stats"),
                         ],
+                        # [
+                        #     html.Div(
+                        #         [
+                        #             html.Div("Submitting jobs progress:"),
+                        #             dbc.Progress(
+                        #                 value=0,
+                        #                 id="submitting-clis-progress",
+                        #                 style={
+                        #                     "width": "50%",
+                        #                     "margin-left": 10,
+                        #                 },
+                        #             ),
+                        #         ],
+                        #         id="progress-div",
+                        #         style={"display": "none"},
+                        #     ),
+                        #     html.Div(id="submitting-clis-stats"),
+                        # ],
                         width=6,
                     ),
                 ]
@@ -241,18 +256,29 @@ def toggle_mask_name_visibility(selected_cli):
         State("current-cli-params", "data"),
         State("mask-name-for-cli", "value"),
     ],
+    background=True,
     running=[
         (
+            Output("cli-submit-button", "disabled"),
+            True,
+            False,
+        ),
+        (
+            Output("cli-submit-button-failed", "disabled"),
+            True,
+            False,
+        ),
+        (
             Output("cli-job-cancel-button", "style"),
-            {"display": "block"},
+            {},
             {"display": "none"},
-        )
+        ),
     ],
-    progress=(
-        Output("job-submit-progress-bar", "value"),
-        Output("job-submit-progress-bar", "label"),
-    ),
-    background=True,
+    progress=[
+        Output("submitting-clis-progress", "value"),
+        Output("submitting-clis-progress", "max"),
+    ],
+    cancel=Input("cli-job-cancel-button", "n_clicks"),
     prevent_initial_call=True,
 )
 def submit_cli_tasks(
@@ -289,16 +315,16 @@ def submit_cli_tasks(
         n_rows = len(dataview_table_rows)
 
         for i, row_data in enumerate(dataview_table_rows):
+            set_progress((str(i + 1), str(n_rows)))
             kwargs["item_id"] = row_data["_id"]
-            responses.append(submit_cli_job(**kwargs))
+            response = responses.append(submit_cli_job(**kwargs))
 
-            v = (i + 1) / n_rows * 100
-            set_progress((v, f"{v:.2f}%"))
+            # v = (i + 1) / n_rows * 100
+            # set_progress((v, f"{v:.2f}%"))
 
-        print("Status returned")
-        print(responses)
+            responses.append(response)
 
-    return html.Div()
+    return html.Div("Hello World")
 
 
 # @callback()
