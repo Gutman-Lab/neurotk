@@ -64,3 +64,78 @@ def read_xml_content(fp: str):
             return fp.read().strip()
 
     return None
+
+
+def get_annotations_documents(
+    gc: GirderClient,
+    item_id: str,
+    doc_names: str | list[str] = None,
+    groups: str | list[str] = None,
+) -> list[dict]:
+    """Get Histomics annotations for an image.
+
+    Args:
+        gc: Girder client.
+        item_id: Item id.
+        doc_names: Only include documents with given names.
+        groups : Only include annotation documents that contain at least one
+            annotation of these set of groups.
+
+    Returns:
+        List of annotation documents.
+
+    """
+    if isinstance(doc_names, str):
+        doc_names = [doc_names]
+
+    if isinstance(groups, str):
+        groups = [groups]
+
+    annotation_docs = []
+
+    # Get information about annotation documents for item.
+    for doc in gc.get(f"annotation?itemId={item_id}"):
+        # If needed only keep documents of certain names.
+        if doc_names is not None and doc["annotation"]["name"] not in doc_names:
+            continue
+
+        # Filter out documents with no annotation groups.
+        if "groups" not in doc or not len(doc["groups"]):
+            continue
+
+        # Ignore document if it does not contain elements in the group list.
+        if groups is not None:
+            ignore_flag = True
+
+            for group in doc["groups"]:
+                if group in groups:
+                    ignore_flag = False
+                    break
+
+            if ignore_flag:
+                continue
+
+        # Get the full document with elements.
+        doc = gc.get(f"annotation/{doc['_id']}")
+
+        # Filter document for elements in group only.
+        elements_kept = []
+        doc_groups = set()
+
+        for element in doc["annotation"]["elements"]:
+            # Remove element without group.
+            if "group" not in element:
+                continue
+
+            if groups is None or element["group"] in groups:
+                elements_kept.append(element)
+                doc_groups.add(element["group"])
+
+        doc["groups"] = list(doc_groups)
+        doc["annotation"]["elements"] = elements_kept
+
+        # Add doc if there were elements.
+        if len(elements_kept):
+            annotation_docs.append(doc)
+
+    return annotation_docs

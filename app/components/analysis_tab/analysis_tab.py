@@ -12,9 +12,10 @@ from pandas import DataFrame
 import plotly.express as px
 from config import AVAILABLE_CLI_TASKS
 from pathlib import Path
+from pprint import pprint
 
 from utils.cli_functions import submit_cli_job
-from utils.utils import read_xml_content, get_gc
+from utils.utils import read_xml_content, get_current_user
 from utils import generate_cli_input_components
 
 # Constants
@@ -37,8 +38,14 @@ CLI_OUTPUT_STYLE = {
 cli_button_controls = html.Div(
     [
         html.Button(
-            "Submit CLI",
+            "Run Jobs",
             id="cli-submit-button",
+            className="mr-2 btn btn-warning",
+            disabled=True,
+        ),
+        html.Button(
+            "Run & Re-run Failed Jobs",
+            id="cli-submit-button-failed",
             className="mr-2 btn btn-warning",
             disabled=True,
         ),
@@ -46,12 +53,8 @@ cli_button_controls = html.Div(
             id="cli-job-cancel-button",
             className="mr-2 btn btn-danger",
             children="Cancel Running Job!",
-            disabled=True,
-        ),
-        dbc.Progress(
-            id="job-submit-progress-bar",
-            className="progress-bar-success",
-            style={"visibility": "hidden"},
+            # disabled=True,
+            style={"display": "none"},
         ),
     ],
     className="d-grid gap-2 d-md-flex justify-content-md-begin",
@@ -62,20 +65,16 @@ cli_button_controls = html.Div(
 def create_cli_selector():
     return dbc.Container(
         [
-            # dcc.Store(id="cliItems_store"),
-            dcc.Store(id="current-cli-params", data={}),
-            # dcc.Store(id="taskJobQueue_store", data={}),
-            # dcc.Store(id="cliImageList_store", data={}),
             dbc.Row(
                 [
                     dmc.Select(
-                        label="Select CLI",
+                        label="Analysis Workflow",
                         id="cli-select",
                         data=list(AVAILABLE_CLI_TASKS.keys()),
                         style={"maxWidth": 300},
                     ),
                     dmc.Select(
-                        label="Image Mask Name",
+                        label="ROI Annotation Document",
                         id="mask-name-for-cli",
                         value="gray-matter-from-xmls",
                         data=[
@@ -101,13 +100,27 @@ def create_cli_selector():
                     ),
                     dbc.Col(
                         [
-                            dbc.Progress(
-                                value=0,
-                                id="submitting-clis-progress",
-                                style={"display": "block", "width": "50%"},
-                            ),
+                            html.Progress(id="submitting-clis-progress", value="0"),
                             html.Div(id="submitting-clis-stats"),
                         ],
+                        # [
+                        #     html.Div(
+                        #         [
+                        #             html.Div("Submitting jobs progress:"),
+                        #             dbc.Progress(
+                        #                 value=0,
+                        #                 id="submitting-clis-progress",
+                        #                 style={
+                        #                     "width": "50%",
+                        #                     "margin-left": 10,
+                        #                 },
+                        #             ),
+                        #         ],
+                        #         id="progress-div",
+                        #         style={"display": "none"},
+                        #     ),
+                        #     html.Div(id="submitting-clis-stats"),
+                        # ],
                         width=6,
                     ),
                 ]
@@ -137,12 +150,19 @@ def update_json_output(*args):
     return result
 
 
-@callback(Output("cli-submit-button", "disabled"), Input("tasks-dropdown", "value"))
+@callback(
+    [
+        Output("cli-submit-button", "disabled"),
+        Output("cli-submit-button-failed", "disabled"),
+    ],
+    Input("tasks-dropdown", "value"),
+    prevent_initial_call=True,
+)
 def toggle_cli_bn_state(selected_task):
     if selected_task:
-        return False
+        return False, False
     else:
-        return True
+        return True, True
 
 
 @callback(
@@ -210,30 +230,129 @@ def update_cli_input_panel(
 
 
 @callback(
+    Output("mask-name-for-cli", "style"),
+    [Input("cli-select", "value")],
+    prevent_initial_call=True,
+)
+def toggle_mask_name_visibility(selected_cli):
+    """Some CLI tasks don't require an ROI / mask input. So hide it when
+    this is specified. In configs.py is where we specify this for each task."""
+    if selected_cli:
+        if AVAILABLE_CLI_TASKS[selected_cli]["roi"]:
+            return {"display": "block", "maxWidth": 300}
+        else:
+            return {"display": "none", "maxWidth": 300}
+    else:
+        return {"display": "none", "maxWidth": 300}
+
+
+@callback(
     output=Output("submitting-clis-stats", "children"),
     inputs=[
         Input("cli-submit-button", "n_clicks"),
+        Input("cli-submit-button-failed", "n_clicks"),
         State("dataview-table", "rowData"),
         State("cli-select", "value"),
         State("current-cli-params", "data"),
         State("mask-name-for-cli", "value"),
     ],
+    background=True,
+    running=[
+        (
+            Output("cli-submit-button", "disabled"),
+            True,
+            False,
+        ),
+        (
+            Output("cli-submit-button-failed", "disabled"),
+            True,
+            False,
+        ),
+        (
+            Output("cli-job-cancel-button", "style"),
+            {},
+            {"display": "none"},
+        ),
+    ],
+    progress=[
+        Output("submitting-clis-progress", "value"),
+        Output("submitting-clis-progress", "max"),
+    ],
+    cancel=Input("cli-job-cancel-button", "n_clicks"),
     prevent_initial_call=True,
 )
 def submit_cli_tasks(
-    n_clicks, dataview_table_rows, selected_cli: str, cli_params: dict, mask_name: str
+    set_progress,
+    n_clicks,
+    n_clicked_failed,
+    dataview_table_rows,
+    selected_cli: str,
+    cli_params: dict,
+    mask_name: str,
 ):
-    gc = get_gc()
+    if n_clicks or n_clicked_failed:
+        if ctx.triggered_id == "cli-submit-button-failed":
+            rerun = True
+        else:
+            rerun = False
+        # Get the girder client and user once to pass to every iteration.
+        gc, user = get_current_user()
 
-    if n_clicks:
-        # Queue the tasks.
-        # NOTE: we need to grab the subset of the data!
+        kwargs = {
+            "gc": gc,
+            "user": user,
+            "cli": selected_cli,
+            "params": cli_params,
+            "roi": mask_name,
+            "rerun": rerun,
+        }
 
-        for i, data in enumerate(dataview_table_rows):
-            submit_cli_job(gc, selected_cli, data, cli_params, mask_name)
+        responses = []
 
-            break
-    return html.Div()
+        # NOTE: For debugging, only run the first 10 rows.
+        dataview_table_rows = dataview_table_rows[:100]
+
+        n_rows = len(dataview_table_rows)
+
+        for i, row_data in enumerate(dataview_table_rows):
+            set_progress((str(i + 1), str(n_rows)))
+            kwargs["item_id"] = row_data["_id"]
+            responses.append(submit_cli_job(**kwargs))
+
+            # v = (i + 1) / n_rows * 100
+            # set_progress((v, f"{v:.2f}%"))
+    # Return a pie chart of the status responses.
+    from collections import Counter
+    import pandas as pd
+
+    PIE_CHART_COLORS = dict(
+        error="rgb(255, 0, 0)",
+        cancelled="rgb(209, 207, 202)",
+        inactive="rgb(0, 255, 238)",
+        success="rgb(14, 153, 0)",
+        queued="rgb(0, 141, 255)",
+        running="rgb(0, 0, 255)",
+        exists="rgb(181, 215, 0)",
+        Submitted="rgb(255, 217, 0)",
+    )
+
+    statuses = Counter([x["status"] for x in responses])
+
+    df = []
+
+    for k, v in statuses.items():
+        df.append([k, v])
+
+    df = pd.DataFrame(df, columns=["Status", "Count"])
+
+    fig = px.pie(
+        df,
+        values="Count",
+        names="Status",
+        color="Status",
+        color_discrete_map=PIE_CHART_COLORS,
+    )
+    return dcc.Graph(figure=fig)
 
 
 # @callback()

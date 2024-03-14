@@ -29,7 +29,7 @@ tabs = html.Div(
             dmc.TabsPanel(analysis_tab, value="analysis-tab"),
         ],
         orientation="horizontal",
-        value="analysis-tab",
+        value="projects-and-tasks-tab",
         color=getenv("LIGHT_BLUE"),
         variant="outline",
     )

@@ -23,11 +23,10 @@ def chunks(lst: list, n=500):
 def get_mongo_client():
     """Get the mongo client."""
     mc = pymongo.MongoClient(
-        getenv("MONGODB_URI"),
-        username=getenv("MONGODB_USERNAME"),
-        password=getenv("MONGODB_PASSWORD"),
+        f"mongodb://{getenv('MONGO_INITDB_ROOT_USERNAME')}:{getenv('MONGO_INITDB_ROOT_PASSWORD')}@mongodb:27017"
     )
 
+    # Return the specific database.
     return mc[getenv("MONGODB_DB")]
 
 
@@ -97,22 +96,17 @@ def add_many_to_collection(
         _ = mongo_collection.bulk_write(chunk)
 
 
-def get_available_projects():
-    """Get the current available projects."""
-    # Get the mongo collection.
-    collection = get_mongo_client()["projects"]
+# def get_available_projects():
+#     """Get the current available projects."""
+#     # Get the mongo collection.
+#     collection = get_mongo_client()["projects"]
 
-    # Get the projects unique to this user.
-    user = get_current_user()[1]
+#     # Get the projects unique to this user.
+#     user = get_current_user()[1]
 
-    projectList = list(collection.find({"projectList": user}))
+#     projectList = list(collection.find({"projectList": user}))
 
-    # if projectList:
-    #     print("Just return the current status of the project list.")
-    # else:
-    #     print("There are no project data - so get the data to return and add to db.")
-
-
-def get_annotation_doc(item_id: str, doc_name: str):
-    """Get the annotation document from the mongo database or from DSA.
-    If getting from DSA, save it to mongo database."""
+#     # if projectList:
+#     #     print("Just return the current status of the project list.")
+#     # else:
+#     #     print("There are no project data - so get the data to return and add to db.")
