@@ -39,6 +39,7 @@ def submit_cli_job(
     records = list(mongo_collection.find({"params": params, "itemId": item_id}))
 
     if records:
+        # These are the records that match both the params and item id.
         for record in records:
             # Get the status from database.
             status = record.get("status")

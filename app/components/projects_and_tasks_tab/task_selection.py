@@ -39,48 +39,12 @@ task_selection = html.Div(
                     align="end",
                     width="auto",
                 ),
-                # dbc.Col(
-                #     html.Div(
-                #         dbc.Button(
-                #             "Delete selected task",
-                #             id="delete-task",
-                #             color="danger",
-                #             className="me-1",
-                #         )
-                #     ),
-                #     align="end",
-                #     width="auto",
-                # ),
             ]
         ),
         create_task_menu,
     ],
     id="task-selection",
-    # style={"backgroundColor": COLORS["background-secondary"]},
 )
-
-
-# @callback(
-#     Output("tasks-dropdown", "value", allow_duplicate=True),
-#     [Input("projects-dropdown", "value")],
-#     prevent_initial_call=True,
-# )
-# def update_task_selection(selected_project: str):
-#     """Update the task selection.
-
-#     Args:
-#         selected_project (str): The selected project.
-
-#     Returns:
-#         str: The selected task.
-
-#     """
-#     if selected_project:
-#         # If the project is changed - then set the task dropdown value to empty.
-#         # Return the first one.
-#         return None
-
-#     return None
 
 
 @callback(
