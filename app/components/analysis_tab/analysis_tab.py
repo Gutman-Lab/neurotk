@@ -53,12 +53,11 @@ cli_button_controls = html.Div(
             id="cli-job-cancel-button",
             className="mr-2 btn btn-danger",
             children="Cancel Running Job!",
-            # disabled=True,
             style={"display": "none"},
+            disabled=True,
         ),
     ],
     className="d-grid gap-2 d-md-flex justify-content-md-begin",
-    # style={"backgroundColor": COLORS["background-secondary"]},
 )
 
 
@@ -94,7 +93,14 @@ def create_cli_selector():
                     dbc.Col(
                         dmc.Text(
                             id="selected-cli-task",
-                            children=[html.Div(id="cli-output"), cli_button_controls],
+                            children=[
+                                html.Div(id="cli-output"),
+                                html.Div(
+                                    id="cli-img-count",
+                                    style={"fontSize": 20, "fontWeight": "bold"},
+                                ),
+                                cli_button_controls,
+                            ],
                         ),
                         width=6,
                     ),
@@ -353,6 +359,32 @@ def submit_cli_tasks(
         color_discrete_map=PIE_CHART_COLORS,
     )
     return dcc.Graph(figure=fig)
+
+
+@callback(
+    Output("cli-img-count", "children"),
+    [
+        Input("dataview-table", "rowData"),
+        Input("dataview-table", "filterModel"),
+        State("dataview-table", "virtualRowData"),
+    ],
+    prevent_initial_call=True,
+)
+def display_table_image_count(
+    rows: list[dict], filter_model: dict, filtered_rows: list[dict]
+) -> str:
+    """Display the number of images in the table.
+
+    Args:
+        rows: The rows of the table.
+        filter_model: The filter model of the table.
+        filtered_rows: The filtered rows of the table.
+
+    Returns:
+        str: The message containing the number of images in the table.
+
+    """
+    return f"Will run on {len(filtered_rows)} images."
 
 
 # @callback()

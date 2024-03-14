@@ -128,11 +128,15 @@ def update_task_dropdown(selected_project: str) -> list[dict[str, str]]:
         Input("projects-dropdown", "value"),
         Input("tasks-dropdown", "value"),
         State("project-store", "data"),
+        Input("dataview-checkbox", "checked"),
     ],
     prevent_initial_call=True,
 )
 def update_dataview_store(
-    selected_project: str, selected_task: str, project_store: dict
+    selected_project: str,
+    selected_task: str,
+    project_store: dict,
+    dataview_checkbox: bool,
 ) -> list[dict]:
     """Update the dataview store.
 
@@ -140,13 +144,15 @@ def update_dataview_store(
         selected_project (str): The selected project.
         selected_task (str): DSA folder id for selected task.
         project_store (dict): Data for the selected project.
+        dataview_checkbox (bool): If True, the whole project dataset should be shown in the table.
+            If False, only images that have been run for this task should be shown.
 
     Returns:
         list[dict]: Data for the selected task.
 
     """
     if selected_project:
-        if selected_task:
+        if selected_task and dataview_checkbox:
             # Find the task.
             task = None
 

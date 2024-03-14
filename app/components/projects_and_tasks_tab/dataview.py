@@ -14,6 +14,9 @@ dataview = html.Div(
             [
                 dmc.TabsList(
                     [
+                        dmc.Checkbox(
+                            id="dataview-checkbox", checked=True, label="Task Images"
+                        ),
                         dbc.Button(
                             "Add Dataset",
                             id="add-dataset",
@@ -71,3 +74,20 @@ def toggle_add_dataset_btn_visibility(selected_project: str) -> dict[str, str]:
         return {"display": "block"}
     else:
         return {"display": "none"}
+
+
+@callback(Output("dataview-checkbox", "label"), Input("dataview-checkbox", "checked"))
+def toggle_dataview_checkbox_label(checked: bool) -> str:
+    """Toggle the label of the dataview checkbox.
+
+    Args:
+        checked (bool): The checked status of the checkbox.
+
+    Returns:
+        str: The label of the checkbox.
+
+    """
+    if checked:
+        return "Task Images"
+    else:
+        return "Project Images"
