@@ -7,33 +7,19 @@ and the reports tab - unsure what kind of UI these will be in.
 from dash import html, dcc, Input, Output, State, ALL, callback, no_update, ctx
 import dash_mantine_components as dmc
 import dash_bootstrap_components as dbc
-from typing import List
-from pandas import DataFrame
 import plotly.express as px
-from config import AVAILABLE_CLI_TASKS
+from config import AVAILABLE_CLI_TASKS, PIE_CHART_COLORS
 from pathlib import Path
-from pprint import pprint
+from collections import Counter
+import pandas as pd
 
+from utils import generate_cli_input_components
 from utils.cli_functions import submit_cli_job
 from utils.utils import read_xml_content, get_current_user
-from utils import generate_cli_input_components
+from utils.mongo_utils import get_mongo_client, add_one_to_collection
+from utils.stores import get_project
 
-# Constants
-CLI_SELECTOR_STYLE = {
-    "marginLeft": "30px",
-    # "backgroundColor": COLORS["background-secondary"],
-}
-# CARD_CLASS = "mb-3"
-# MT3_CLASS = "mt-3"
-CLI_OUTPUT_STYLE = {
-    "border": "1px solid #ddd",
-    "padding": "10px",
-    "marginTop": "10px",
-    "borderRadius": "5px",
-    "boxShadow": "2px 2px 12px #aaa",
-    # "backgroundColor": COLORS["background-secondary"],
-}
-
+from pprint import pprint  # NOTE: remove this when done debugging.
 
 cli_button_controls = html.Div(
     [
@@ -132,7 +118,7 @@ def create_cli_selector():
                 ]
             ),
         ],
-        style=CLI_SELECTOR_STYLE,
+        style={"marginLeft": 30},
     )
 
 
@@ -175,7 +161,7 @@ def toggle_cli_bn_state(selected_task):
     [
         Output("cli-select", "value"),
         Output("cli-select", "disabled"),
-        Output("mask-name-for-cli", "value"),
+        Output("mask-name-for-cli", "value", allow_duplicate=True),
         Output("mask-name-for-cli", "disabled"),
     ],
     [Input("tasks-dropdown", "value"), State("project-store", "data")],
@@ -189,7 +175,12 @@ def select_cli_from_task(selected_task, project_store):
         task_item = project_store["tasks"][selected_task]
 
         if task_item.get("cli"):
-            return task_item["cli"], True, task_item["roi"], True
+            return (
+                task_item["cli"],
+                True,
+                task_item["roi"],
+                True,
+            )
 
     return list(AVAILABLE_CLI_TASKS.keys())[0], False, "", False
 
@@ -236,7 +227,10 @@ def update_cli_input_panel(
 
 
 @callback(
-    Output("mask-name-for-cli", "style"),
+    [
+        Output("mask-name-for-cli", "style"),
+        Output("mask-name-for-cli", "value", allow_duplicate=True),
+    ],
     [Input("cli-select", "value")],
     prevent_initial_call=True,
 )
@@ -245,22 +239,29 @@ def toggle_mask_name_visibility(selected_cli):
     this is specified. In configs.py is where we specify this for each task."""
     if selected_cli:
         if AVAILABLE_CLI_TASKS[selected_cli]["roi"]:
-            return {"display": "block", "maxWidth": 300}
+            return {"display": "block", "maxWidth": 300}, ""
         else:
-            return {"display": "none", "maxWidth": 300}
+            return {"display": "none", "maxWidth": 300}, ""
     else:
-        return {"display": "none", "maxWidth": 300}
+        return {"display": "none", "maxWidth": 300}, ""
 
 
 @callback(
-    output=Output("submitting-clis-stats", "children"),
+    output=[
+        Output("submitting-clis-stats", "children"),
+        Output("project-store", "data", allow_duplicate=True),
+    ],
     inputs=[
         Input("cli-submit-button", "n_clicks"),
         Input("cli-submit-button-failed", "n_clicks"),
+        State("dataview-table", "filterModel"),
         State("dataview-table", "rowData"),
+        State("dataview-table", "virtualRowData"),
         State("cli-select", "value"),
         State("current-cli-params", "data"),
         State("mask-name-for-cli", "value"),
+        State("projects-dropdown", "value"),
+        State("tasks-dropdown", "value"),
     ],
     background=True,
     running=[
@@ -291,10 +292,14 @@ def submit_cli_tasks(
     set_progress,
     n_clicks,
     n_clicked_failed,
-    dataview_table_rows,
+    datatable_filtered_model: dict,
+    datatable_rows: list[dict],
+    datatable_filtered_rows: list[dict],
     selected_cli: str,
     cli_params: dict,
     mask_name: str,
+    project_fld_id: str,
+    selected_task: str,
 ):
     if n_clicks or n_clicked_failed:
         if ctx.triggered_id == "cli-submit-button-failed":
@@ -313,52 +318,82 @@ def submit_cli_tasks(
             "rerun": rerun,
         }
 
+        # Get the current task item info from mongo.
+        mongo_collection = get_mongo_client()["projectStore"]
+
+        records = list(mongo_collection.find({"_id": project_fld_id, "user": user}))
+
+        if not all([records, records[0].get("tasks", {}).get(selected_task)]):
+            return html.Div(
+                "Could not find the task of interest, something is off....",
+                style={"color": "red", "fontWeight": "bold", "fontSize": 20},
+            )
+
+        record = records[0]
+        task_info = record["tasks"][selected_task]
+
+        # Get the list of images.
+        img_id_list = task_info.get("images", [])
+
+        n = len(img_id_list)
+
+        # Use filtered rows if there is a filter model.
+        rows = datatable_filtered_rows if datatable_filtered_model else datatable_rows
+
+        # Append to this list.
+        for row in rows:
+            if row["_id"] not in img_id_list:
+                img_id_list.append(row["_id"])
+
+        if len(img_id_list) > n:
+            # New images were added.
+            task_info["images"] = img_id_list
+
+        # Add cli was already there, you don't have to add any more!
+        if not task_info.get("cli"):
+            # Add the cli part.
+            task_info["cli"] = selected_cli
+            task_info["params"] = cli_params
+            task_info["roi"] = mask_name
+
         responses = []
 
-        # NOTE: For debugging, only run the first 10 rows.
-        dataview_table_rows = dataview_table_rows[:100]
+        n_rows = len(rows)
 
-        n_rows = len(dataview_table_rows)
-
-        for i, row_data in enumerate(dataview_table_rows):
+        for i, row_data in enumerate(rows):
             set_progress((str(i + 1), str(n_rows)))
             kwargs["item_id"] = row_data["_id"]
             responses.append(submit_cli_job(**kwargs))
 
-            # v = (i + 1) / n_rows * 100
-            # set_progress((v, f"{v:.2f}%"))
-    # Return a pie chart of the status responses.
-    from collections import Counter
-    import pandas as pd
+        # Push the changes to task.
+        meta = {
+            "cli": task_info["cli"],
+            "images": task_info["images"],
+            "params": task_info["params"],
+            "roi": mask_name,
+        }
+        _ = gc.addMetadataToItem(task_info["_id"], metadata=meta)
+        add_one_to_collection("projectStore", record)
 
-    PIE_CHART_COLORS = dict(
-        error="rgb(255, 0, 0)",
-        cancelled="rgb(209, 207, 202)",
-        inactive="rgb(0, 255, 238)",
-        success="rgb(14, 153, 0)",
-        queued="rgb(0, 141, 255)",
-        running="rgb(0, 0, 255)",
-        exists="rgb(181, 215, 0)",
-        Submitted="rgb(255, 217, 0)",
-    )
+        statuses = Counter([x["status"] for x in responses])
 
-    statuses = Counter([x["status"] for x in responses])
+        df = []
 
-    df = []
+        for k, v in statuses.items():
+            df.append([k, v])
 
-    for k, v in statuses.items():
-        df.append([k, v])
+        df = pd.DataFrame(df, columns=["Status", "Count"])
 
-    df = pd.DataFrame(df, columns=["Status", "Count"])
+        fig = px.pie(
+            df,
+            values="Count",
+            names="Status",
+            color="Status",
+            color_discrete_map=PIE_CHART_COLORS,
+        )
+        return dcc.Graph(figure=fig), get_project(record["_id"])[0]
 
-    fig = px.pie(
-        df,
-        values="Count",
-        names="Status",
-        color="Status",
-        color_discrete_map=PIE_CHART_COLORS,
-    )
-    return dcc.Graph(figure=fig)
+    return html.Div(), no_update
 
 
 @callback(
@@ -384,297 +419,5 @@ def display_table_image_count(
         str: The message containing the number of images in the table.
 
     """
-    return f"Will run on {len(filtered_rows)} images."
-
-
-# @callback()
-#         print(selected_task)
-
-#     # Decide if the UI should be in disabled or enabled.
-#     # if selected_task:
-#     #     task = task_store.get(selected_task)
-
-#     #     if task is None:
-#     #         raise Exception("Selected task is not in task store, there is a BUG!")
-
-#     #     meta = task.get("meta", {})
-
-#     #     if meta.get("images"):
-#     #         if "params" not in meta:
-#     #             raise Exception(
-#     #                 "Images list saved to task without params, this is a BUG!"
-#     #             )
-
-#     #         params = meta["params"]
-
-#     #         disabled = False  ## CHANGED LOGIC
-#     #     else:
-#     #         disabled = False
-#     # else:
-#     #     disabled = False
-
-#     dsa_cli_task_layout = generate_cli_input_components(
-#         xml_content, disabled=False, params=params
-#     )
-
-#     return [dsa_cli_task_layout]
-
-
-### Update this cliItems from the main table data.
-## TO DO-- DO NOT ALLOW THE CLI TO bE SUBMITTED IF THERE ARE NO ACTUAL]
-## ITEMS TO RUN.. its confusing..
-# @callback(Output("cliItems_store", "data"), Input("filteredItem_store", "data"))
-# def updateCliTasks(filtered_store):
-#     # If the task is selected, but there is not filtered item store. Then
-#     return filtered_store if filtered_store else []
-
-
-# @callback(
-#     Output("cliItemStats", "children"),
-#     Input("cliItems_store", "data"),
-# )
-# def displayImagesForCLI(data):
-#     # print(len(data), "items in imagelist..")
-#     ## This gets the data from the itemSet store, it really needs to be the
-#     ## filtered version based on the task you are trying to run, will be integrated
-#     ## This is what I will dump in the imagelist for now.. will expand over time
-#     outputData = "Should show item count..."
-#     if data:
-#         ## TO DO ... ADD SOME MORE MATH TO DISPLAY OTHER PROPERTIES
-#         return html.Div(f"Items in Task List: {len(data)} ")
-#     else:
-#         return html.Div()
-
-
-# @callback(
-#     [
-#         Output("cli-select", "value"),
-#         Output("mask-name-for-cli", "value"),
-#         Output("cli-select", "disabled"),
-#         Output("mask-name-for-cli", "disabled"),
-#     ],
-#     [Input("tasks-dropdown", "value"), Input("task-store", "data")],
-# )
-# def select_task_cli(selected_task, task_store):
-#     """When choosing a new task, if the task has already been run then
-#     switch the CLI select to the correct value.
-#     """
-#     if selected_task:
-#         task = task_store.get(selected_task)
-
-#         if task is None:
-#             raise Exception("Selected task is not in task store, there is a BUG!")
-
-#         # Set the cli select and annotation mask dropdown to options if needed.
-#         meta = task.get("meta", {})
-
-#         if meta.get("images"):
-#             return meta["cli"], meta["roi"], True, True
-
-#     return no_update, no_update, False, False
-
-
-# @callback(
-#     Output("curCLI_params", "data"),
-#     [Input({"type": "dynamic-input", "index": ALL}, "value")],
-#     [State({"type": "dynamic-input", "index": ALL}, "id")],
-# )
-# def update_json_output(*args):
-#     names = args[::2]  # Take every other item starting from 0
-#     values = args[1::2]  # Take every other item starting from 1
-#     result = {value["index"]: name for name, value in zip(names[0], values[0])}
-#     return result
-
-
-# @app.long_callback(
-#     output=[
-#         # Output("cli-output-status", "children"),
-#         Output("task-store", "data", allow_duplicate=True),
-#         Output("taskJobQueue_store", "data"),
-#         Output("task-pie-chart", "style"),
-#         Output("task-pie-chart", "figure"),
-#     ],
-#     inputs=[
-#         Input("cli-submit-button", "n_clicks"),
-#         State("curCLI_params", "data"),
-#         State("cliItems_store", "data"),
-#         State("mask-name-for-cli", "value"),
-#         State("tasks-dropdown", "value"),
-#         State("task-store", "data"),
-#         State("cli-select", "value"),
-#     ],
-#     running=[
-#         (Output("cli-submit-button", "disabled"), True, False),
-#         (Output("cli-job-cancel-button", "disabled"), False, True),
-#         (
-#             Output("job-submit-progress-bar", "style"),
-#             {"visibility": "visible", "width": "25vw"},
-#             {"visibility": "visible", "width": "25vw"},
-#         ),
-#     ],
-#     cancel=[Input("cli-job-cancel-button", "n_clicks")],
-#     progress=[
-#         Output("job-submit-progress-bar", "value"),
-#         Output("job-submit-progress-bar", "label"),
-#         Output("job-submit-progress-bar", "max"),
-#     ],
-#     prevent_initial_call=True,
-# )
-# def submitCLItasks(
-#     set_progress,
-#     n_clicks: int,
-#     curCLI_params: dict,
-#     itemsToRun: List[dict],
-#     maskName: str,
-#     selected_task: str,
-#     task_store: List[dict],
-#     selected_cli: str,
-# ):
-#     """
-#     Submit a CLI task - though right now this will only work with ppc.
-
-#     Args:
-#         n_clicks: This is the button to submit CLI task. Check if positive to run.
-#         curCLI_params: Dictionary of the params in the CLI panel.
-#         itemsToRun: List of DSA items to run.
-#         maskName: Name of mask which is used to determine the region to run CLI on.
-#         selected_task: CLI is tied to a task, this is the current selected task.
-#         task_store: Selected task is just the task name, not the id of it. The id is
-#             stored in the task_store.
-
-#     """
-#     if n_clicks:
-#         task_id = None
-
-#         for task in task_store:
-#             if selected_task == task:
-#                 task_id = task_store[task]["_id"]
-#                 break
-
-#         if not task_id:
-#             raise Exception("Task not found in task store, but alert.")
-
-#         # Submit metadata to the task.
-#         task_metadata = {
-#             "images": [item["_id"] for item in itemsToRun],
-#             "cli": selected_cli,
-#             "params": curCLI_params,
-#             "roi": maskName,
-#         }
-
-#         item = gc.addMetadataToItem(task_id, metadata=task_metadata)
-
-#         # Update this item on the task store.
-#         task_store[item["name"]] = item
-
-#         # Submit the jobs
-#         jobSubmitList = []
-#         n_jobs = len(itemsToRun)
-
-#         print(f"This is the selected task: {selected_cli}")
-#         for i, item in enumerate(itemsToRun):
-#             if selected_cli == "PositivePixelCount":
-#                 jobOutput = submit_ppc_job(item, curCLI_params, maskName)
-#             elif selected_cli in ("TissueSegmentation", "TissueSegmentationV2"):
-#                 jobOutput = submit_tissue_detection(item, curCLI_params, selected_cli)
-#             elif selected_cli == "NFTDetection":
-#                 jobOutput = submit_nft_inference(item, curCLI_params, maskName)
-#             else:
-#                 raise Exception(f"{selected_cli} does not have a submit function!")
-
-#             jobSubmitList.append(jobOutput)
-
-#             jobStatuspercent = ((i + 1) / n_jobs) * 100
-
-#             set_progress((str(i + 1), f"{jobStatuspercent:.2f}%", n_jobs))
-
-#         submissionStatus = [x["status"] for x in jobSubmitList]
-
-#         # Get the job status for every job.
-#         currentJobStatusInfo = []
-
-#         for x in jobSubmitList:
-#             if x.get("girderResponse") is None:
-#                 currentJobStatusInfo.append("unknown")
-#             else:
-#                 currentJobStatusInfo.append(
-#                     x.get("girderResponse").get("status", "no status found")
-#                 )
-
-#         # Convert the current job status info into a dataframe for graphing
-#         df = []
-
-#         for status in currentJobStatusInfo:
-#             if status == "JobSubmitFailed":
-#                 df.append(["Broken Image", -1, 1])
-#             elif status == 0:
-#                 df.append(["Inactive", status, 1])
-#             elif status == 1:
-#                 df.append(["Queued", status, 1])
-#             elif status == 2:
-#                 df.append(["Running", status, 1])
-#             elif status == 3:
-#                 df.append(["Complete", status, 1])
-#             elif status == 4:
-#                 df.append(["Fail", status, 1])
-#             else:
-#                 df.append(["Unknown", status, 1])
-
-#         df = DataFrame(df, columns=["Label", "Status Code", "Counts"])
-
-#         fig = px.pie(df, values="Counts", names="Label", hole=0.3)
-
-#         return task_store, jobSubmitList, {"visibility": "visible"}, fig
-
-
-# @callback(
-#     Output("projectItem_store", "data", allow_duplicate=True),
-#     Input("cli-submit-button", "n_clicks"),
-#     [
-#         State("projects-dropdown", "data"),
-#         State("projects-dropdown", "value"),
-#     ],
-#     prevent_initial_call=True,
-# )
-# def update_task_list(n_clicks, available_projects, project_id):
-#     if n_clicks:
-#         # Update the project list.
-#         projectItemSet = []
-
-#         for project in available_projects:
-#             if project["value"] == project_id:
-#                 projectName = project["label"]
-
-#                 projectItemSet = getProjectDataset(
-#                     projectName, project_id, forceRefresh=True
-#                 )
-
-#                 return projectItemSet
-
-
-# @callback(
-#     Output("cli-submit-button", "disabled"),
-#     Input("tasks-dropdown", "value"),
-#     State("task-store", "data"),
-# )
-# def toggle_cli_bn_state(selected_task, task_store):
-#     """
-#     Disable the submit CLI button when no task is selected.
-#     """
-#     if selected_task:
-#         # There is a task selected, get this task.
-#         task = task_store.get(selected_task)
-
-#         if task is None:
-#             raise Exception("Selected task is not in task store, there is a BUG!")
-
-#         # DEBUG - always return False
-#         return False
-
-#         # # Check the metadata for images - if it exists then the button should disable.
-#         # if task.get("meta", {}).get("images"):
-#         #     return True
-#         # else:
-#         #     return False
-
-#     return True
+    n = len(filtered_rows) if filter_model else len(rows)
+    return f"Will run on {n} images."
