@@ -66,76 +66,101 @@ def read_xml_content(fp: str):
     return None
 
 
-def get_annotations_documents(
-    gc: GirderClient,
-    item_id: str,
-    doc_names: str | list[str] = None,
-    groups: str | list[str] = None,
+def get_annotation_docs(
+    gc: GirderClient, item_id: str, name: str | None = None
 ) -> list[dict]:
-    """Get Histomics annotations for an image.
+    """Get the list of annotation document metadata for an item. Note that this
+    does not return the points of the annotations.
 
     Args:
-        gc: Girder client.
-        item_id: Item id.
-        doc_names: Only include documents with given names.
-        groups : Only include annotation documents that contain at least one
-            annotation of these set of groups.
+        gc (girder_client.GirderClient): Girder client.
+        item_id (str): Item id.
+        name (str): Only include documents with this name. Defaults to None.
 
     Returns:
-        List of annotation documents.
+        list[dict]: List of annotation documents.
 
     """
-    if isinstance(doc_names, str):
-        doc_names = [doc_names]
+    "annotation?itemId=641bbfd7867536bb7a22b42e&name=tissue&limit=0&offset=0&sort=lowerName&sortdir=1"
 
-    if isinstance(groups, str):
-        groups = [groups]
+    request = f"annotation?itemId={item_id}&limit=0&offset=0&sort=lowerName&sortdir=1"
 
-    annotation_docs = []
+    if name is not None:
+        request += f"&name={name}"
 
-    # Get information about annotation documents for item.
-    for doc in gc.get(f"annotation?itemId={item_id}"):
-        # If needed only keep documents of certain names.
-        if doc_names is not None and doc["annotation"]["name"] not in doc_names:
-            continue
+    return gc.get(request)
 
-        # Filter out documents with no annotation groups.
-        if "groups" not in doc or not len(doc["groups"]):
-            continue
 
-        # Ignore document if it does not contain elements in the group list.
-        if groups is not None:
-            ignore_flag = True
+# def get_annotations_documents(
+#     gc: GirderClient,
+#     item_id: str,
+#     doc_names: str | list[str] = None,
+#     groups: str | list[str] = None,
+# ) -> list[dict]:
+#     """Get Histomics annotations for an image.
 
-            for group in doc["groups"]:
-                if group in groups:
-                    ignore_flag = False
-                    break
+#     Args:
+#         gc: Girder client.
+#         item_id: Item id.
+#         doc_names: Only include documents with given names.
+#         groups : Only include annotation documents that contain at least one
+#             annotation of these set of groups.
 
-            if ignore_flag:
-                continue
+#     Returns:
+#         List of annotation documents.
 
-        # Get the full document with elements.
-        doc = gc.get(f"annotation/{doc['_id']}")
+#     """
+#     if isinstance(doc_names, str):
+#         doc_names = [doc_names]
 
-        # Filter document for elements in group only.
-        elements_kept = []
-        doc_groups = set()
+#     if isinstance(groups, str):
+#         groups = [groups]
 
-        for element in doc["annotation"]["elements"]:
-            # Remove element without group.
-            if "group" not in element:
-                continue
+#     annotation_docs = []
 
-            if groups is None or element["group"] in groups:
-                elements_kept.append(element)
-                doc_groups.add(element["group"])
+#     # Get information about annotation documents for item.
+#     for doc in gc.get(f"annotation?itemId={item_id}"):
+#         # If needed only keep documents of certain names.
+#         if doc_names is not None and doc["annotation"]["name"] not in doc_names:
+#             continue
 
-        doc["groups"] = list(doc_groups)
-        doc["annotation"]["elements"] = elements_kept
+#         # Filter out documents with no annotation groups.
+#         if "groups" not in doc or not len(doc["groups"]):
+#             continue
 
-        # Add doc if there were elements.
-        if len(elements_kept):
-            annotation_docs.append(doc)
+#         # Ignore document if it does not contain elements in the group list.
+#         if groups is not None:
+#             ignore_flag = True
 
-    return annotation_docs
+#             for group in doc["groups"]:
+#                 if group in groups:
+#                     ignore_flag = False
+#                     break
+
+#             if ignore_flag:
+#                 continue
+
+#         # Get the full document with elements.
+#         doc = gc.get(f"annotation/{doc['_id']}")
+
+#         # Filter document for elements in group only.
+#         elements_kept = []
+#         doc_groups = set()
+
+#         for element in doc["annotation"]["elements"]:
+#             # Remove element without group.
+#             if "group" not in element:
+#                 continue
+
+#             if groups is None or element["group"] in groups:
+#                 elements_kept.append(element)
+#                 doc_groups.add(element["group"])
+
+#         doc["groups"] = list(doc_groups)
+#         doc["annotation"]["elements"] = elements_kept
+
+#         # Add doc if there were elements.
+#         if len(elements_kept):
+#             annotation_docs.append(doc)
+
+#     return annotation_docs

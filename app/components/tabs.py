@@ -3,6 +3,7 @@ from os import getenv
 from dash import html
 from components.projects_and_tasks_tab import projects_and_tasks_tab
 from components.analysis_tab import analysis_tab
+from components.annotations_tab import annotations_tab
 
 tabs = html.Div(
     dmc.Tabs(
@@ -19,6 +20,9 @@ tabs = html.Div(
                         value="analysis-tab",
                         style={"color": "white"},
                     ),
+                    dmc.Tab(
+                        "Annotations", value="annotations-tab", style={"color": "white"}
+                    ),
                 ],
                 style={"background-color": getenv("EMORY_BLUE")},
             ),
@@ -27,9 +31,10 @@ tabs = html.Div(
                 value="projects-and-tasks-tab",
             ),
             dmc.TabsPanel(analysis_tab, value="analysis-tab"),
+            dmc.TabsPanel(annotations_tab, value="annotations-tab"),
         ],
         orientation="horizontal",
-        value="projects-and-tasks-tab",
+        value="annotations-tab",  ##NOTE: debugging"projects-and-tasks-tab",
         color=getenv("LIGHT_BLUE"),
         variant="outline",
     )

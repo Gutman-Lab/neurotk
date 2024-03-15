@@ -2,7 +2,7 @@ from girder_client import GirderClient, HttpError
 from pprint import pprint
 from copy import deepcopy
 
-from utils.utils import get_annotations_documents, get_current_user, get_gc
+from utils.utils import get_current_user, get_gc, get_annotation_docs
 from utils.mongo_utils import get_mongo_client, add_one_to_collection
 
 
@@ -112,10 +112,8 @@ def submit_non_roi_taks(cli_api, item_id, params, gc, mongo_collection, user, ro
         # Found so return it!
         return {"status": "exists", "girderResponse": None}
     else:
-        # Check if the output file exists!
-        annotation_docs = get_annotations_documents(
-            gc, item_id, doc_names=params["docname"]
-        )
+        # Request annotation docs from DSA and check if the params are the same.
+        annotation_docs = get_annotation_docs(gc, item_id, name=params["docname"])
 
         # The params should be the same.
         for doc in annotation_docs:
