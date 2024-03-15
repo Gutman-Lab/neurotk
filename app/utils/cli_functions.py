@@ -88,9 +88,13 @@ def submit_cli_job(
     )
 
     if cli in ("TissueSegmentation", "TissueSegmentationV2"):
+        # These are CLIs that follow standard conventions for analysis that does not use ROI as input.
         kwargs["cli_api"] = f"slicer_cli_web/jvizcar_neurotk_latest/{cli}/run"
 
         return submit_non_roi_taks(**kwargs)
+    elif cli == "PositivePixelCount":
+        # PPC is a unique case, because it always outputs a doc of the same name, but can also use input area.
+        kwargs["slicer_cli_web/dsarchive_histomicstk_latest/PositivePixelCount/run"]
     # elif cli == "TissueSegmentation":
     # else:
     #     print(f"This CLI task is not currently supported: {cli}")
