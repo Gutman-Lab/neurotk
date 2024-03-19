@@ -21,90 +21,79 @@ from utils.stores import get_project
 
 from pprint import pprint  # NOTE: remove this when done debugging.
 
-cli_button_controls = html.Div(
-    [
-        html.Button(
-            "Run Jobs",
-            id="cli-submit-button",
-            className="mr-2 btn btn-warning",
-            disabled=True,
-        ),
-        html.Button(
-            "Run & Re-run Failed Jobs",
-            id="cli-submit-button-failed",
-            className="mr-2 btn btn-warning",
-            disabled=True,
-        ),
-        html.Button(
-            id="cli-job-cancel-button",
-            className="mr-2 btn btn-danger",
-            children="Cancel Running Job!",
-            style={"display": "none"},
-            disabled=True,
-        ),
-    ],
-    className="d-grid gap-2 d-md-flex justify-content-md-begin",
-)
-
-
-def create_cli_selector():
-    return dbc.Container(
-        [
-            dbc.Row(
-                [
-                    dmc.Select(
-                        label="Analysis Workflow",
-                        id="cli-select",
-                        data=list(AVAILABLE_CLI_TASKS.keys()),
-                        style={"maxWidth": 300},
-                    ),
-                    dmc.Select(
-                        label="ROI Annotation Document",
-                        id="mask-name-for-cli",
-                        value="gray-matter-from-xmls",
-                        creatable=True,
-                        searchable=True,
-                        data=[
-                            "",
-                        ],
-                        style={"maxWidth": 300},
-                    ),
-                ]
-            ),
-            dbc.Row(
-                [
-                    dbc.Col(
-                        dmc.Text(
-                            id="selected-cli-task",
-                            children=[
-                                html.Div(id="cli-output"),
-                                html.Div(
-                                    id="cli-img-count",
-                                    style={"fontSize": 20, "fontWeight": "bold"},
-                                ),
-                                cli_button_controls,
-                            ],
-                        ),
-                        width=6,
-                    ),
-                    dbc.Col(
-                        [
-                            html.Progress(id="submitting-clis-progress", value="0"),
-                            html.Div(id="submitting-clis-stats"),
-                        ],
-                        width=6,
-                    ),
-                ]
-            ),
-        ],
-        style={"marginLeft": 30},
-    )
-
 
 analysis_tab = dbc.Container(
     [
-        dbc.Row(create_cli_selector()),
-    ]
+        dbc.Row(
+            [
+                dmc.Select(
+                    label="Analysis Workflow",
+                    id="cli-select",
+                    data=list(AVAILABLE_CLI_TASKS.keys()),
+                    style={"maxWidth": 300},
+                ),
+                dmc.Select(
+                    label="ROI Annotation Document",
+                    id="mask-name-for-cli",
+                    value="gray-matter-from-xmls",
+                    creatable=True,
+                    searchable=True,
+                    data=[
+                        "",
+                    ],
+                    style={"maxWidth": 300},
+                ),
+            ]
+        ),
+        dbc.Row(
+            [
+                dbc.Col(
+                    dmc.Text(
+                        id="selected-cli-task",
+                        children=[
+                            html.Div(id="cli-output"),
+                            html.Div(
+                                id="cli-img-count",
+                                style={"fontSize": 20, "fontWeight": "bold"},
+                            ),
+                            html.Div(
+                                [
+                                    html.Button(
+                                        "Run Jobs",
+                                        id="cli-submit-button",
+                                        className="mr-2 btn btn-warning",
+                                        disabled=True,
+                                    ),
+                                    html.Button(
+                                        "Run & Re-run Failed Jobs",
+                                        id="cli-submit-button-failed",
+                                        className="mr-2 btn btn-warning",
+                                        disabled=True,
+                                    ),
+                                    html.Button(
+                                        id="cli-job-cancel-button",
+                                        className="mr-2 btn btn-danger",
+                                        children="Cancel Running Job!",
+                                        style={"display": "none"},
+                                        disabled=True,
+                                    ),
+                                ],
+                                className="d-grid gap-2 d-md-flex justify-content-md-begin",
+                            ),
+                        ],
+                    ),
+                    width=6,
+                ),
+                dbc.Col(
+                    [
+                        html.Progress(id="submitting-clis-progress", value="0"),
+                        html.Div(id="submitting-clis-stats"),
+                    ],
+                    width=6,
+                ),
+            ]
+        ),
+    ],
 )
 
 

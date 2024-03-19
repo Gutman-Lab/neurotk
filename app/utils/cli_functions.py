@@ -91,17 +91,30 @@ def submit_cli_job(
         # These are CLIs that follow standard conventions for analysis that does not use ROI as input.
         kwargs["cli_api"] = f"slicer_cli_web/jvizcar_neurotk_latest/{cli}/run"
 
-        return submit_non_roi_taks(**kwargs)
+        return submit_non_roi_task(**kwargs)
     elif cli == "PositivePixelCount":
         # PPC is a unique case, because it always outputs a doc of the same name, but can also use input area.
-        kwargs["slicer_cli_web/dsarchive_histomicstk_latest/PositivePixelCount/run"]
+        kwargs["cli_api"] = (
+            "slicer_cli_web/dsarchive_histomicstk_latest/PositivePixelCount/run"
+        )
+
+        return submit_ppc_task(**kwargs)
+
     # elif cli == "TissueSegmentation":
     # else:
     #     print(f"This CLI task is not currently supported: {cli}")
     #     return "CLI not supported."
 
 
-def submit_non_roi_taks(cli_api, item_id, params, gc, mongo_collection, user, roi):
+def submit_non_roi_task(
+    cli_api: str,
+    item_id: str,
+    params: dict,
+    gc: GirderClient,
+    mongo_collection,
+    user: str,
+    roi: str | None = None,
+) -> dict:
     """Submit tissue detection CLI to set of images."""
     # Check if the output annotation doc exists, first in Mongo then in DSA.
     records = list(
@@ -111,25 +124,23 @@ def submit_non_roi_taks(cli_api, item_id, params, gc, mongo_collection, user, ro
     if records:
         # Found so return it!
         return {"status": "exists", "girderResponse": None}
-    else:
-        # Request annotation docs from DSA and check if the params are the same.
-        annotation_docs = get_annotation_docs(gc, item_id, name=params["docname"])
 
-        # The params should be the same.
-        for doc in annotation_docs:
-            doc_params = (
-                doc.get("annotation", {}).get("attributes", {}).get("params", {})
-            )
+    # Request annotation docs from DSA and check if the params are the same.
+    annotation_docs = get_annotation_docs(gc, item_id, name=params["docname"])
 
-            doc_dict = {k: doc_params[k] for k in params if k in doc_params}
+    # The params should be the same.
+    for doc in annotation_docs:
+        doc_params = doc.get("annotation", {}).get("attributes", {}).get("params", {})
 
-            if doc_dict == params:
-                # Found it, add it to database and return.
-                doc["params"] = params
+        doc_dict = {k: doc_params[k] for k in params if k in doc_params}
 
-                add_one_to_collection("annotations", doc, user=user)
+        if doc_dict == params:
+            # Found it, add it to database and return.
+            doc["params"] = params
 
-                return {"status": "exists", "girderResponse": None}
+            add_one_to_collection("annotations", doc, user=user)
+
+            return {"status": "exists", "girderResponse": None}
 
     # Could not find it anywhere, so submit the job.
     item = gc.get(f"item/{item_id}")
@@ -158,31 +169,73 @@ def submit_non_roi_taks(cli_api, item_id, params, gc, mongo_collection, user, ro
         return {"status": "error", "girderResponse": e.response.json()}
 
 
-def submit_ppc_job(gc, data, params, mask_name=None):
-    ppc_ext = "slicer_cli_web/dsarchive_histomicstk_latest/PositivePixelCount/run"
+def submit_ppc_task(
+    cli_api: str,
+    item_id: str,
+    params: dict,
+    gc: GirderClient,
+    mongo_collection,
+    user: str,
+    roi: str | None = None,
+) -> dict:
+    """Submit a PPC CLI task."""
+    roi = "tissue"  # NOTE: for debugging purposes.
+    # Check if database has ROI points.
+    records = list(
+        mongo_collection.find({"user": user, "annotation.name": roi, "itemId": item_id})
+    )
+
+    if records:
+        # Check if the annotation has points.
+        record = records[0]
+
+        if record.get("annotation", {}).get("elements"):
+            raise Exception(
+                "There are no elements in this annotation doc, need to write the logic that gets them and upates the database too."
+            )
+
+        # Format the annotation elements into points to pass as the region parameter.
+        regions = convert_elements_to_regions(record["annotation"]["elements"])
+
+    return {"status": "success", "girderResponse": None}
+
+    # Check if the output annotation doc is in the Mongo database.
+    records = list(
+        mongo_collection.find({"user": user, "params": params, "itemId": item_id})
+    )
+
+    if records:
+        # It is in database, return this message.
+        return {"status": "exists", "girderResponse": None}
+
+    # Try to find it in DSA, note that PPC CLI from HistomicsTK always creates a doc of the same name.
+    annotation_docs = get_annotation_docs(gc, item_id, name="Positive Pixel Count")
+
+    # for doc in annotation_docs:
+    # Params will not match
 
     # points = "[5000,5000,1000,1000]"
 
-    # try:
-    item = gc.get(f"item/{data['_id']}")
+    #
+    # item = gc.get(f"item/{data['_id']}")
 
-    cliInputData = {
-        "inputImageFile": item["largeImage"]["fileId"],
-        "outputLabelImage": f"{item['name']}_ppc.tiff",
-        "outputLabelImage_folder": "645a5fb76df8ba8751a8dd7d",
-        "outputAnnotationFile": f"{item['name']}_ppc.anot",
-        "outputAnnotationFile_folder": "645a5fb76df8ba8751a8dd7d",
-        "returnparameterfile": f"{item['name']}_ppc.params",
-        "returnparameterfile_folder": "645a5fb76df8ba8751a8dd7d",
-    }
+    # cliInputData = {
+    #     "inputImageFile": item["largeImage"]["fileId"],
+    #     "outputLabelImage": f"{item['name']}_ppc.tiff",
+    #     "outputLabelImage_folder": "645a5fb76df8ba8751a8dd7d",
+    #     "outputAnnotationFile": f"{item['name']}_ppc.anot",
+    #     "outputAnnotationFile_folder": "645a5fb76df8ba8751a8dd7d",
+    #     "returnparameterfile": f"{item['name']}_ppc.params",
+    #     "returnparameterfile_folder": "645a5fb76df8ba8751a8dd7d",
+    # }
 
-    # The region should not be estimated like this!
-    cliInputData.update(params)
-    # cliInputData["region"] = points
+    # # The region should not be estimated like this!
+    # cliInputData.update(params)
+    # # cliInputData["region"] = points
 
-    if mask_name is None:
-        pass
-        # NOTE: get the tile source and run on entire area.
+    # if mask_name is None:
+    #     pass
+    #     # NOTE: get the tile source and run on entire area.
     # else:
     # Get the points based on the annotation, if it exists only though!
 

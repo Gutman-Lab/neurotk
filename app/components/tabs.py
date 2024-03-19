@@ -34,7 +34,7 @@ tabs = html.Div(
             dmc.TabsPanel(annotations_tab, value="annotations-tab"),
         ],
         orientation="horizontal",
-        value="annotations-tab",  ##NOTE: debugging"projects-and-tasks-tab",
+        value="projects-and-tasks-tab",
         color=getenv("LIGHT_BLUE"),
         variant="outline",
     )

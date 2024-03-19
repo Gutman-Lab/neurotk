@@ -91,6 +91,34 @@ def get_annotation_docs(
     return gc.get(request)
 
 
+def convert_elements_to_regions(
+    elements: list[dict], delineator: tuple = (", -1, -1, ")
+) -> list[int]:
+    """Convert the elements in an annotation document to a list of ints corresponding to the
+    vertices of the elements. Multiple elements are separated appropriately so they can be passed
+    to the DSA CLI API.
+
+    Args:
+        elements (list[dict]): List of annotation elements.
+
+    Returns:
+        list[int]: List of vertices.
+
+    """
+    points = []
+
+    for el in elements:
+        if el.get("type") == "polyline":
+            if el.get("points"):
+                el_points = np.array(el["points"])[:, :2].astype(str)
+                el_points = el_points.flatten().tolist()
+                points.append(", ".join(el_points))
+
+    points = delineator.join(points)
+
+    return f"[{points}]"
+
+
 # def get_annotations_documents(
 #     gc: GirderClient,
 #     item_id: str,
