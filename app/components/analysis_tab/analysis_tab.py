@@ -62,13 +62,10 @@ def create_cli_selector():
                         label="ROI Annotation Document",
                         id="mask-name-for-cli",
                         value="gray-matter-from-xmls",
+                        creatable=True,
+                        searchable=True,
                         data=[
                             "",
-                            "gray-matter-from-xmls",
-                            "gray-matter-fixed",
-                            "tissue",
-                            "tissueV2",
-                            "tissue-unet",
                         ],
                         style={"maxWidth": 300},
                     ),
@@ -95,24 +92,6 @@ def create_cli_selector():
                             html.Progress(id="submitting-clis-progress", value="0"),
                             html.Div(id="submitting-clis-stats"),
                         ],
-                        # [
-                        #     html.Div(
-                        #         [
-                        #             html.Div("Submitting jobs progress:"),
-                        #             dbc.Progress(
-                        #                 value=0,
-                        #                 id="submitting-clis-progress",
-                        #                 style={
-                        #                     "width": "50%",
-                        #                     "margin-left": 10,
-                        #                 },
-                        #             ),
-                        #         ],
-                        #         id="progress-div",
-                        #         style={"display": "none"},
-                        #     ),
-                        #     html.Div(id="submitting-clis-stats"),
-                        # ],
                         width=6,
                     ),
                 ]
@@ -421,3 +400,22 @@ def display_table_image_count(
     """
     n = len(filtered_rows) if filter_model else len(rows)
     return f"Will run on {n} images."
+
+
+@callback(
+    Output("mask-name-for-cli", "data"),
+    [Input("annotations-table", "rowData")],
+    prevent_initial_call=True,
+)
+def update_roi_dropdown(annotations_row_data: list[dict]) -> list[dict[str, str]]:
+    """Based on the annotations table, update the ROI dropdown."""
+    if annotations_row_data:
+        return [
+            {
+                "label": x["Annotation Document Name"],
+                "value": x["Annotation Document Name"],
+            }
+            for x in annotations_row_data
+        ]
+
+    return no_update

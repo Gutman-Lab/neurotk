@@ -2,7 +2,7 @@ from girder_client import GirderClient, HttpError
 from pprint import pprint
 from copy import deepcopy
 
-from utils.utils import get_annotations_documents, get_current_user, get_gc
+from utils.utils import get_current_user, get_gc, get_annotation_docs
 from utils.mongo_utils import get_mongo_client, add_one_to_collection
 
 
@@ -27,40 +27,43 @@ def submit_cli_job(
         rerun: If True, will rerun the CLI task if it had prevously failed.
 
     """
+    # Get girder client and the user if not provided.
     if gc is None:
         gc = get_gc()
 
     if user is None:
         user = get_current_user()[1]
 
-    # Check if the CLI is currently running.
-    mongo_collection = get_mongo_client()["girderQueue"]
-
-    records = list(mongo_collection.find({"params": params, "itemId": item_id}))
+    # Check the queue collection if a task for this item and parameteres has been submitted.
+    queue_collection = get_mongo_client()["girderQueue"]
+    records = list(
+        queue_collection.find({"params": params, "itemId": item_id, "roi": roi})
+    )
 
     if records:
-        # These are the records that match both the params and item id.
+        # There are records for this.
         for record in records:
             # Get the status from database.
             status = record.get("status")
 
-            # If the status is in 4 or 5 then it might be rerun.
-            if status is None or status not in (4, 5):
+            """Status map:
+            0: inactive = delete from mongo and run
+            1: queued = check againskip
+            2: running = skip
+            3: success = skip
+            4: error = delete from mongo and run
+            5: cancelled = delete from mongo and run
+            """
+            if status is None or status not in (3, 4, 5):
                 # Get the job response.
                 job_response = gc.get(f"job/{record['_id']}")
                 status = job_response.get("status")
 
-            # 0: inactive = delete from mongo and run
-            # 1: queued = skip
-            # 2: running = skip
-            # 3: success = delete from mongo, and skip
-            # 4: error = delete from mongo and run
-            # 5: cancelled = delete from mongo and run
             if status in (4, 5):
                 # Failed to run.
                 if rerun:
                     # Delete and run it again.
-                    mongo_collection.delete_one({"_id": record["_id"]})
+                    queue_collection.delete_one({"_id": record["_id"]})
                 else:
                     if status == 4:
                         return {"status": "error", "girderResponse": job_response}
@@ -75,22 +78,32 @@ def submit_cli_job(
             elif status == 2:
                 return {"status": "running", "girderResponse": job_response}
 
-    if cli == "TissueSegmentation":
-        return submit_tissue_detection(item_id, params)
-    else:
-        print(f"This CLI task is not currently supported: {cli}")
-        return "CLI not supported."
+    kwargs = dict(
+        item_id=item_id,
+        params=params,
+        mongo_collection=get_mongo_client()["annotations"],
+        user=user,
+        gc=gc,
+        roi=roi,
+    )
+
+    if cli in ("TissueSegmentation", "TissueSegmentationV2"):
+        # These are CLIs that follow standard conventions for analysis that does not use ROI as input.
+        kwargs["cli_api"] = f"slicer_cli_web/jvizcar_neurotk_latest/{cli}/run"
+
+        return submit_non_roi_taks(**kwargs)
+    elif cli == "PositivePixelCount":
+        # PPC is a unique case, because it always outputs a doc of the same name, but can also use input area.
+        kwargs["slicer_cli_web/dsarchive_histomicstk_latest/PositivePixelCount/run"]
+    # elif cli == "TissueSegmentation":
+    # else:
+    #     print(f"This CLI task is not currently supported: {cli}")
+    #     return "CLI not supported."
 
 
-def submit_tissue_detection(item_id, params):
+def submit_non_roi_taks(cli_api, item_id, params, gc, mongo_collection, user, roi):
     """Submit tissue detection CLI to set of images."""
-    gc, user = get_current_user()
-
-    cli_ext = f"slicer_cli_web/jvizcar_neurotk_latest/TissueSegmentation/run"
-
     # Check if the output annotation doc exists, first in Mongo then in DSA.
-    mongo_collection = get_mongo_client()["annotations"]
-
     records = list(
         mongo_collection.find({"user": user, "params": params, "itemId": item_id})
     )
@@ -99,10 +112,8 @@ def submit_tissue_detection(item_id, params):
         # Found so return it!
         return {"status": "exists", "girderResponse": None}
     else:
-        # Check if the output file exists!
-        annotation_docs = get_annotations_documents(
-            gc, item_id, doc_names=params["docname"]
-        )
+        # Request annotation docs from DSA and check if the params are the same.
+        annotation_docs = get_annotation_docs(gc, item_id, name=params["docname"])
 
         # The params should be the same.
         for doc in annotation_docs:
@@ -131,11 +142,12 @@ def submit_tissue_detection(item_id, params):
     cliInputData.update(params)
 
     try:
-        girder_response = gc.post(cli_ext, data=cliInputData)
+        girder_response = gc.post(cli_api, data=cliInputData)
 
         # Add this the girderQueue database.
         girder_response["params"] = params
         girder_response["itemId"] = item_id
+        girder_response["roi"] = roi
 
         add_one_to_collection("girderQueue", girder_response, user=user)
 
