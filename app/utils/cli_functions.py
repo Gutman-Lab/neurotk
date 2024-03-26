@@ -1,6 +1,7 @@
 from girder_client import GirderClient, HttpError
 from pprint import pprint
 from copy import deepcopy
+from pymongo.database import Database
 
 from utils.utils import get_current_user, get_gc, get_annotation_docs
 from utils.mongo_utils import get_mongo_client, add_one_to_collection
@@ -99,11 +100,9 @@ def submit_cli_job(
         )
 
         return submit_ppc_task(**kwargs)
-
-    # elif cli == "TissueSegmentation":
-    # else:
-    #     print(f"This CLI task is not currently supported: {cli}")
-    #     return "CLI not supported."
+    
+    print("CLI not found.")
+    return {"status": "not a valid CLI", "girderResponse": None}
 
 
 def submit_non_roi_task(
@@ -167,6 +166,56 @@ def submit_non_roi_task(
     except HttpError as e:
         # Failed, return the error.
         return {"status": "error", "girderResponse": e.response.json()}
+    
+    
+def check_for_annotation_elements(mongo_collection: Database, gc: GirderClient, item_id: str, roi: str,
+                                  user: str, params: dict):
+    """Check the database for elements in an annotation document, if not found get from the DSA
+    and update the database.
+    
+    Args:
+        mongo_collection (pymongo.database.Database): The mongo collection to check for annotations.
+        gc (girdler_client.GirderClient): The GirderClient to use.
+        item_id (str): The item id to check.
+        roi (str): The name of the annotation document.
+        user (str): The user to check for.
+        params (dict): The parameters to check for.
+    
+    """
+    # Check for an annotation document by its name only. NOTE: this does not match exact parameters used
+    # to generate the annotation document.
+    records = list(
+        mongo_collection.find({"user": user, "annotation.name": roi, "itemId": item_id})
+    )
+    
+    if records:
+        record = records[0]
+    else:
+        # The annotation document is not in the database, look for it in the DSA.
+        annotation_docs = gc.get(
+            f'annotation?itemId={item_id}&name={roi}&limit=0&offset=0&sort=lowerName&sortdir=1'
+        )
+        
+        if annotation_docs:
+            for doc in annotation_docs:
+                # Get params from the annotation document.
+                doc_params = doc.get("annotation", {}).get("attributes", {}).get("params", {})
+
+                if doc_dict == params:
+                    # Found it, add it to database and return.
+                    record = doc
+                    record['params'] = params
+                    
+                    add_one_to_collection("annotations", record, user=user)
+                    break
+        else:
+            # The annotation document does not exist.
+            return None
+        
+        
+            
+    # Check if the elements are there.
+    
 
 
 def submit_ppc_task(
@@ -179,20 +228,18 @@ def submit_ppc_task(
     roi: str | None = None,
 ) -> dict:
     """Submit a PPC CLI task."""
-    roi = "tissue"  # NOTE: for debugging purposes.
     # Check if database has ROI points.
     records = list(
         mongo_collection.find({"user": user, "annotation.name": roi, "itemId": item_id})
     )
 
     if records:
-        # Check if the annotation has points.
+        # An annotation document with the ROI name exists, check if the points have been pulled.
         record = records[0]
 
-        if record.get("annotation", {}).get("elements"):
-            raise Exception(
-                "There are no elements in this annotation doc, need to write the logic that gets them and upates the database too."
-            )
+        if not record.get("annotation", {}).get("elements"):
+            # The elements are not there - so get them.
+            elements = 
 
         # Format the annotation elements into points to pass as the region parameter.
         regions = convert_elements_to_regions(record["annotation"]["elements"])

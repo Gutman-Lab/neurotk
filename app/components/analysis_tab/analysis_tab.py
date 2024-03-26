@@ -1,9 +1,3 @@
-from dash import html
-
-"""
-The analysis tab / frame. This div contains the CLI tab, the HistomicsUI iFrame,
-and the reports tab - unsure what kind of UI these will be in.
-"""
 from dash import html, dcc, Input, Output, State, ALL, callback, no_update, ctx
 import dash_mantine_components as dmc
 import dash_bootstrap_components as dbc
@@ -38,9 +32,7 @@ analysis_tab = dbc.Container(
                     value="gray-matter-from-xmls",
                     creatable=True,
                     searchable=True,
-                    data=[
-                        "",
-                    ],
+                    data=[{"value": "tissue", "label": "tissue"}],
                     style={"maxWidth": 300},
                 ),
             ]
@@ -132,10 +124,14 @@ def toggle_cli_bn_state(selected_task):
         Output("mask-name-for-cli", "value", allow_duplicate=True),
         Output("mask-name-for-cli", "disabled"),
     ],
-    [Input("tasks-dropdown", "value"), State("project-store", "data")],
+    [
+        Input("tasks-dropdown", "value"),
+        State("project-store", "data"),
+        State("mask-name-for-cli", "data"),
+    ],
     prevent_initial_call=True,
 )
-def select_cli_from_task(selected_task, project_store):
+def select_cli_from_task(selected_task, project_store, roi_selection_data):
     """When choosing a new task, if the task has already been run then
     switch the CLI select to the correct value.
     """
@@ -194,24 +190,24 @@ def update_cli_input_panel(
     return html.Div("Please choose a task to run CLIs.")
 
 
-@callback(
-    [
-        Output("mask-name-for-cli", "style"),
-        Output("mask-name-for-cli", "value", allow_duplicate=True),
-    ],
-    [Input("cli-select", "value")],
-    prevent_initial_call=True,
-)
-def toggle_mask_name_visibility(selected_cli):
-    """Some CLI tasks don't require an ROI / mask input. So hide it when
-    this is specified. In configs.py is where we specify this for each task."""
-    if selected_cli:
-        if AVAILABLE_CLI_TASKS[selected_cli]["roi"]:
-            return {"display": "block", "maxWidth": 300}, ""
-        else:
-            return {"display": "none", "maxWidth": 300}, ""
-    else:
-        return {"display": "none", "maxWidth": 300}, ""
+# @callback(
+#     [
+#         Output("mask-name-for-cli", "style"),
+#         Output("mask-name-for-cli", "value", allow_duplicate=True),
+#     ],
+#     [Input("cli-select", "value")],
+#     prevent_initial_call=True,
+# )
+# def toggle_mask_name_visibility(selected_cli):
+#     """Some CLI tasks don't require an ROI / mask input. So hide it when
+#     this is specified. In configs.py is where we specify this for each task."""
+#     if selected_cli:
+#         if AVAILABLE_CLI_TASKS[selected_cli]["roi"]:
+#             return {"display": "block", "maxWidth": 300}, ""
+#         else:
+#             return {"display": "none", "maxWidth": 300}, ""
+#     else:
+#         return {"display": "none", "maxWidth": 300}, ""
 
 
 @callback(
@@ -391,20 +387,21 @@ def display_table_image_count(
     return f"Will run on {n} images."
 
 
-@callback(
-    Output("mask-name-for-cli", "data"),
-    [Input("annotations-table", "rowData")],
-    prevent_initial_call=True,
-)
-def update_roi_dropdown(annotations_row_data: list[dict]) -> list[dict[str, str]]:
-    """Based on the annotations table, update the ROI dropdown."""
-    if annotations_row_data:
-        return [
-            {
-                "label": x["Annotation Document Name"],
-                "value": x["Annotation Document Name"],
-            }
-            for x in annotations_row_data
-        ]
+# @callback(
+#     Output("mask-name-for-cli", "data"),
+#     [Input("annotations-table", "rowData")],
+#     prevent_initial_call=True,
+# )
+# def update_roi_dropdown(annotations_row_data: list[dict]) -> list[dict[str, str]]:
+#     """Based on the annotations table, update the ROI dropdown."""
+#     if annotations_row_data:
+#         return [
+#             {
+#                 "label": x["Annotation Document Name"],
+#                 "value": x["Annotation Document Name"],
+#             }
+#             for x in annotations_row_data
+#         ]
 
-    return no_update
+#     return [{"label": "tissue", "value": "tissue"}]
+#     return no_update
