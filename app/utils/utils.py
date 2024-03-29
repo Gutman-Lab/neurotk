@@ -1,6 +1,7 @@
 from girder_client import GirderClient
 from os import getenv
 from pathlib import Path
+import numpy as np
 
 
 def get_current_user():
