@@ -213,7 +213,6 @@ def check_for_doc(
         return records[0]
     else:
         # Look in the DSA for the document.
-        print("Looking for roi document", docname)
         annotation_docs = gc.get(
             f"annotation?itemId={item_id}&name={docname}&limit=0&offset=0&sort=lowerName&sortdir=1"
         )
