@@ -9,6 +9,7 @@ stores = html.Div(
         dcc.Store(id="dataview-store", data=[]),
         dcc.Store(id="datasets-store", data={}),
         dcc.Store(id="current-cli-params", data={}),
+        dcc.Store(id="report-store", data=[]),
     ]
 )
 

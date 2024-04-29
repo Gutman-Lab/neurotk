@@ -1,5 +1,13 @@
-env/
+# General files & directories to ignore.
+__pycache__
 *.pyc
+
+# Python environment directory variants.
+env/
 .env
+pyenv/
+.pyenv/
+
+# Directory & files for cache.
 cache/
 *.db

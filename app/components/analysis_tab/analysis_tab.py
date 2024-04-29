@@ -1,9 +1,3 @@
-from dash import html
-
-"""
-The analysis tab / frame. This div contains the CLI tab, the HistomicsUI iFrame,
-and the reports tab - unsure what kind of UI these will be in.
-"""
 from dash import html, dcc, Input, Output, State, ALL, callback, no_update, ctx
 import dash_mantine_components as dmc
 import dash_bootstrap_components as dbc
@@ -21,90 +15,77 @@ from utils.stores import get_project
 
 from pprint import pprint  # NOTE: remove this when done debugging.
 
-cli_button_controls = html.Div(
-    [
-        html.Button(
-            "Run Jobs",
-            id="cli-submit-button",
-            className="mr-2 btn btn-warning",
-            disabled=True,
-        ),
-        html.Button(
-            "Run & Re-run Failed Jobs",
-            id="cli-submit-button-failed",
-            className="mr-2 btn btn-warning",
-            disabled=True,
-        ),
-        html.Button(
-            id="cli-job-cancel-button",
-            className="mr-2 btn btn-danger",
-            children="Cancel Running Job!",
-            style={"display": "none"},
-            disabled=True,
-        ),
-    ],
-    className="d-grid gap-2 d-md-flex justify-content-md-begin",
-)
-
-
-def create_cli_selector():
-    return dbc.Container(
-        [
-            dbc.Row(
-                [
-                    dmc.Select(
-                        label="Analysis Workflow",
-                        id="cli-select",
-                        data=list(AVAILABLE_CLI_TASKS.keys()),
-                        style={"maxWidth": 300},
-                    ),
-                    dmc.Select(
-                        label="ROI Annotation Document",
-                        id="mask-name-for-cli",
-                        value="gray-matter-from-xmls",
-                        creatable=True,
-                        searchable=True,
-                        data=[
-                            "",
-                        ],
-                        style={"maxWidth": 300},
-                    ),
-                ]
-            ),
-            dbc.Row(
-                [
-                    dbc.Col(
-                        dmc.Text(
-                            id="selected-cli-task",
-                            children=[
-                                html.Div(id="cli-output"),
-                                html.Div(
-                                    id="cli-img-count",
-                                    style={"fontSize": 20, "fontWeight": "bold"},
-                                ),
-                                cli_button_controls,
-                            ],
-                        ),
-                        width=6,
-                    ),
-                    dbc.Col(
-                        [
-                            html.Progress(id="submitting-clis-progress", value="0"),
-                            html.Div(id="submitting-clis-stats"),
-                        ],
-                        width=6,
-                    ),
-                ]
-            ),
-        ],
-        style={"marginLeft": 30},
-    )
-
 
 analysis_tab = dbc.Container(
     [
-        dbc.Row(create_cli_selector()),
-    ]
+        dbc.Row(
+            [
+                dmc.Select(
+                    label="Analysis Workflow",
+                    id="cli-select",
+                    data=list(AVAILABLE_CLI_TASKS.keys()),
+                    style={"maxWidth": 300},
+                ),
+                dmc.Select(
+                    label="ROI Annotation Document",
+                    id="mask-name-for-cli",
+                    value="gray-matter-from-xmls",
+                    creatable=True,
+                    searchable=True,
+                    data=[{"value": "tissue", "label": "tissue"}],
+                    style={"maxWidth": 300},
+                ),
+            ]
+        ),
+        dbc.Row(
+            [
+                dbc.Col(
+                    dmc.Text(
+                        id="selected-cli-task",
+                        children=[
+                            html.Div(id="cli-output"),
+                            html.Div(
+                                id="cli-img-count",
+                                style={"fontSize": 20, "fontWeight": "bold"},
+                            ),
+                            html.Div(
+                                [
+                                    html.Button(
+                                        "Run Jobs",
+                                        id="cli-submit-button",
+                                        className="mr-2 btn btn-warning",
+                                        disabled=True,
+                                    ),
+                                    html.Button(
+                                        "Run & Re-run Failed Jobs",
+                                        id="cli-submit-button-failed",
+                                        className="mr-2 btn btn-warning",
+                                        disabled=True,
+                                    ),
+                                    html.Button(
+                                        id="cli-job-cancel-button",
+                                        className="mr-2 btn btn-danger",
+                                        children="Cancel Running Job!",
+                                        style={"display": "none"},
+                                        disabled=True,
+                                    ),
+                                ],
+                                className="d-grid gap-2 d-md-flex justify-content-md-begin",
+                            ),
+                        ],
+                    ),
+                    width=6,
+                ),
+                dbc.Col(
+                    [
+                        html.Progress(id="submitting-clis-progress", value="0"),
+                        html.Div(id="submitting-clis-stats"),
+                    ],
+                    width=6,
+                ),
+            ]
+        ),
+    ],
 )
 
 
@@ -143,10 +124,14 @@ def toggle_cli_bn_state(selected_task):
         Output("mask-name-for-cli", "value", allow_duplicate=True),
         Output("mask-name-for-cli", "disabled"),
     ],
-    [Input("tasks-dropdown", "value"), State("project-store", "data")],
+    [
+        Input("tasks-dropdown", "value"),
+        State("project-store", "data"),
+        State("mask-name-for-cli", "data"),
+    ],
     prevent_initial_call=True,
 )
-def select_cli_from_task(selected_task, project_store):
+def select_cli_from_task(selected_task, project_store, roi_selection_data):
     """When choosing a new task, if the task has already been run then
     switch the CLI select to the correct value.
     """
@@ -205,24 +190,24 @@ def update_cli_input_panel(
     return html.Div("Please choose a task to run CLIs.")
 
 
-@callback(
-    [
-        Output("mask-name-for-cli", "style"),
-        Output("mask-name-for-cli", "value", allow_duplicate=True),
-    ],
-    [Input("cli-select", "value")],
-    prevent_initial_call=True,
-)
-def toggle_mask_name_visibility(selected_cli):
-    """Some CLI tasks don't require an ROI / mask input. So hide it when
-    this is specified. In configs.py is where we specify this for each task."""
-    if selected_cli:
-        if AVAILABLE_CLI_TASKS[selected_cli]["roi"]:
-            return {"display": "block", "maxWidth": 300}, ""
-        else:
-            return {"display": "none", "maxWidth": 300}, ""
-    else:
-        return {"display": "none", "maxWidth": 300}, ""
+# @callback(
+#     [
+#         Output("mask-name-for-cli", "style"),
+#         Output("mask-name-for-cli", "value", allow_duplicate=True),
+#     ],
+#     [Input("cli-select", "value")],
+#     prevent_initial_call=True,
+# )
+# def toggle_mask_name_visibility(selected_cli):
+#     """Some CLI tasks don't require an ROI / mask input. So hide it when
+#     this is specified. In configs.py is where we specify this for each task."""
+#     if selected_cli:
+#         if AVAILABLE_CLI_TASKS[selected_cli]["roi"]:
+#             return {"display": "block", "maxWidth": 300}, ""
+#         else:
+#             return {"display": "none", "maxWidth": 300}, ""
+#     else:
+#         return {"display": "none", "maxWidth": 300}, ""
 
 
 @callback(
@@ -402,20 +387,21 @@ def display_table_image_count(
     return f"Will run on {n} images."
 
 
-@callback(
-    Output("mask-name-for-cli", "data"),
-    [Input("annotations-table", "rowData")],
-    prevent_initial_call=True,
-)
-def update_roi_dropdown(annotations_row_data: list[dict]) -> list[dict[str, str]]:
-    """Based on the annotations table, update the ROI dropdown."""
-    if annotations_row_data:
-        return [
-            {
-                "label": x["Annotation Document Name"],
-                "value": x["Annotation Document Name"],
-            }
-            for x in annotations_row_data
-        ]
+# @callback(
+#     Output("mask-name-for-cli", "data"),
+#     [Input("annotations-table", "rowData")],
+#     prevent_initial_call=True,
+# )
+# def update_roi_dropdown(annotations_row_data: list[dict]) -> list[dict[str, str]]:
+#     """Based on the annotations table, update the ROI dropdown."""
+#     if annotations_row_data:
+#         return [
+#             {
+#                 "label": x["Annotation Document Name"],
+#                 "value": x["Annotation Document Name"],
+#             }
+#             for x in annotations_row_data
+#         ]
 
-    return no_update
+#     return [{"label": "tissue", "value": "tissue"}]
+#     return no_update
