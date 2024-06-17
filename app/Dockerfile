@@ -4,14 +4,10 @@ ENV PYTHONUNBUFFERED True
 
 WORKDIR /app
 
-COPY requirements.txt /app
-
 RUN pip install --upgrade pip
 
+RUN pip install --no-cache-dir dash[celery]
+
+# Install packages from requirements.txt.
+COPY requirements.txt /app
 RUN pip install --no-cache-dir -r requirements.txt
-
-RUN pip install -U "celery[redis,librabbitmq]"
-
-RUN pip install "dash[celery]"
-
-
