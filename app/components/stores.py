@@ -1,5 +1,5 @@
 from dash import dcc, html, callback, Output, Input
-from utils.utils import get_current_user
+from utils.girder_utils import get_current_user
 from os import getenv
 
 stores = html.Div(
@@ -14,9 +14,8 @@ stores = html.Div(
 )
 
 
-@callback(Output("datasets-store", "data"), Input("datasets-store", "clear_data"))
 def initiate_dataset_store(_):
-    """Initiate the dataset store."""
+
     gc, user = get_current_user()
 
     # Get the dataset directory.

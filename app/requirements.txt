@@ -1,10 +1,9 @@
-pandas==2.2.1
-dash==2.15.0
-dash-bootstrap-components==1.5.0
-dash-mantine-components==0.12.1
-dash_ag_grid==31.0.1
-girder-client==3.2.2
-pymongo==4.6.2
-flask-mongoengine==1.0.0
-flask==2.2.5
-watchdog==4.0.0
+# pandas==2.2.1
+# dash==2.15.0
+# dash-mantine-components==0.12.1
+# dash_ag_grid==31.0.1
+# flask-mongoengine==1.0.0
+# flask==2.2.5
+watchdog==4.0.1
+dash-bootstrap-components==1.6.0
+girder-client==3.2.3
