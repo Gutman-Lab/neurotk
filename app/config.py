@@ -28,3 +28,10 @@ PIE_CHART_COLORS = dict(
     exists="rgb(181, 215, 0)",
     Submitted="rgb(255, 217, 0)",
 )
+
+COLORS = {
+    "COOL_GRAY_1": "#d9d9d6",
+    "EMORY_BLUE": "#012169",
+    "LIGHT_BLUE": "#007dba",
+    "YELLOW": "#f2a900",
+}

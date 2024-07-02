@@ -4,9 +4,7 @@ ENV PYTHONUNBUFFERED True
 
 WORKDIR /app
 
-RUN pip install --upgrade pip
-
-RUN pip install --no-cache-dir dash[celery]
+RUN pip install --no-cache-dir --upgrade pip
 
 # Install packages from requirements.txt.
 COPY requirements.txt /app
