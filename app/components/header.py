@@ -3,7 +3,7 @@ from dash import html, callback, Input, Output, State
 import dash_bootstrap_components as dbc
 from os import getenv
 from config import COLORS
-from components.login_modal import login_modal
+from components.login_modal import login_modal, logout_modal
 
 header = html.Div(
     [
@@ -12,7 +12,11 @@ header = html.Div(
                 dbc.Col(
                     html.H1(
                         "NeuroTK",
-                        style={"fontWeight": "bold", "color": COLORS["COOL_GRAY_1"]},
+                        style={
+                            "fontWeight": "bold",
+                            "color": COLORS["COOL_GRAY_1"],
+                            "marginLeft": 5,
+                        },
                     ),
                     width=4,
                 ),
@@ -30,8 +34,9 @@ header = html.Div(
             justify="between",
         ),
         login_modal,
+        logout_modal,
     ],
-    style={"background-color": COLORS["EMORY_BLUE"]},
+    style={"backgroundColor": COLORS["EMORY_BLUE"]},
 )
 
 

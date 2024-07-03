@@ -1,0 +1,12 @@
+body {
+    background-color: white !important; /* Change #f0f0f0 to your desired color */
+}
+
+.row-justify-start {
+    justify-content: flex-start !important;
+}
+
+.custom-button {
+    background-color: #012169;
+    color: white;
+}
