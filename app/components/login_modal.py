@@ -123,21 +123,6 @@ def login(n_clicks, login, password):
 
         response = gc.get("token/session")
 
-        print(response)
-
-        # Check for a NeuroTK api token.
-        # api_token = None
-
-        # for api_token_data in gc.get('api_key?limit=0&offset=0&sort=name&sortdir=1'):
-        #     if api_token_data.get('name') == 'neurotk':
-        #         if api_token_data['active']:
-        #             api_token = api_token_data['key']
-        #         else:
-        #             _ = gc.delete(f"api_key/{api_token_data['_id']}")
-
-        # if api_token is None:
-        # Create the token.
-
         user = gc.get("user/me")["login"]
 
         return {"user": user, "token": response["token"]}, True, False, "", ""

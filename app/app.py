@@ -1,7 +1,7 @@
 # Dash application.
 import dash_bootstrap_components as dbc
 from dash import Dash, html, dcc
-from components import stores, header, projects_tab, datasets_tab
+from components import stores, header, projects_tab, datasets_tab, tasks_tab
 
 app = Dash(
     __name__,
@@ -31,12 +31,12 @@ app.layout = html.Div(
                 dcc.Tab(
                     label="Tasks",
                     value="tasks",
-                    children=html.Div("Tasks"),
+                    children=tasks_tab,
                     className="custom-tab",
                     selected_className="custom-tab--selected",
                 ),
             ],
-            value="datasets",
+            value="tasks",
             parent_className="custom-tabs",
             className="custom-tabs-container",
         ),

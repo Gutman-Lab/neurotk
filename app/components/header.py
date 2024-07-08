@@ -44,3 +44,20 @@ header = html.Div(
 def check_user_store(data):
     # Check if the user store has user info or if no one is logged in.
     return data["user"] if len(data) else "Log in"
+
+
+@callback(
+    [
+        Output("delete-dataset-btn", "disabled"),
+        Output("sync-datasets-btn", "disabled"),
+        Output("create-project-btn", "disabled"),
+        Output("delete-project-btn", "disabled"),
+    ],
+    Input("user-store", "data"),
+)
+def disable_enable_buttons(user_data):
+    # Disable buttons if the user data is not available.
+    if len(user_data):
+        return False, False, False, False
+    else:
+        return True, True, True, True

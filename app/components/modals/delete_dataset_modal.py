@@ -1,7 +1,7 @@
 from dash import html, callback, Output, Input, State, no_update
 import dash_bootstrap_components as dbc
 from os import getenv
-from girder_client import GirderClient, HttpError
+from girder_client import GirderClient
 from utils.mongo_utils import get_mongo_db
 
 delete_dataset_modal = html.Div(
@@ -36,6 +36,7 @@ delete_dataset_modal = html.Div(
 )
 
 
+# Callbacks
 @callback(
     Output("delete-dataset-modal", "is_open", allow_duplicate=True),
     Input("delete-dataset-btn", "n_clicks"),

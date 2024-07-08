@@ -74,7 +74,6 @@ def add_many_to_collection(
     mongo_collection: pymongo.collection.Collection,
     user: str,
     docs: dict[str, dict],
-    key: str = "_id",
 ):
     """Add items to a mongo collection. For this project we always add items with a unique
     user key.

@@ -23,6 +23,7 @@
     width: 150px !important;
     height: 25px !important;
 }
+
 .custom-tab--selected {
     color: black;
     font-weight: bold;
@@ -30,4 +31,28 @@
     background-color: #007dba !important;
     width: 150px !important;
     height: 25px !important;
+}
+
+.custom-subtab {
+    color: black;
+    background-color: white !important;
+    width: 150px !important;
+    height: 25px !important;
+    display: flex !important;
+    justify-content: center; 
+    align-items: center;
+    border: white !important;
+}
+
+.custom-subtab--selected {
+    color: black;
+    font-weight: bold;
+    background-color: white !important;
+    width: 150px !important;
+    height: 25px !important;
+    border-top: white !important;
+    display: flex !important;
+    justify-content: center; 
+    align-items: center;
+    border: white !important;
 }

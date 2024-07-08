@@ -4,6 +4,22 @@ from girder_client import GirderClient, HttpError
 from os import getenv
 from utils.mongo_utils import get_mongo_db, add_many_to_collection
 from components.modals import delete_dataset_modal
+from dash_ag_grid import AgGrid
+from pandas import json_normalize
+import json
+
+dataset_table = AgGrid(
+    id="dataset-table",
+    columnDefs=[],
+    rowData=[],
+    dashGridOptions={
+        "pagination": True,
+        "paginationAutoPageSize": True,
+    },
+    style={"height": "50vh"},
+)
+
+dataset_filters = html.Div(id="dataset-filters")
 
 datasets_tab = html.Div(
     [
@@ -38,8 +54,28 @@ datasets_tab = html.Div(
             justify="start",
             style={"marginTop": 5, "marginLeft": 5},
         ),
+        dcc.Tabs(
+            [
+                dcc.Tab(
+                    label="Images",
+                    value="images_table",
+                    children=dataset_table,
+                    selected_className="custom-subtab--selected",
+                    className="custom-subtab",
+                ),
+                dcc.Tab(
+                    label="Filters",
+                    value="dataset_filters",
+                    children=dataset_filters,
+                    selected_className="custom-subtab--selected",
+                    className="custom-subtab",
+                ),
+            ],
+            value="images_table",
+            style={"marginTop": 5},
+        ),
         delete_dataset_modal,
-    ]
+    ],
 )
 
 
@@ -153,10 +189,54 @@ def sync_projects(n_clicks, user_data, dataset_id):
 
 
 @callback(
-    Output("delete-dataset-btn", "disabled"),
-    Input("dataset-dropdown", "value"),
+    [
+        Output("dataset-table", "columnDefs"),
+        Output("dataset-table", "rowData"),
+        Output("dataset-filters", "children"),
+    ],
+    [Input("dataset-dropdown", "value"), State("user-store", "data")],
     prevent_initial_call=True,
 )
-def enable_delete_dataset_btn(dataset_id):
-    # If not dataset available, then you can disable the button.
-    return not dataset_id
+def load_dataset_table(dataset_id, user_data):
+    # Load the dataset image data into table.
+    if dataset_id:
+        # Look for the dataset in mongo.
+        db = get_mongo_db()["datasets"]
+
+        dataset = db.find_one({"_id": dataset_id, "user": user_data["user"]})
+
+        df = json_normalize(dataset["meta"]["data"], sep="-")
+
+        # Rename columns with period with a space.
+        df.columns = [col.replace(".", " ") for col in df.columns]
+
+        columnDefs = [{"headerName": col, "field": col} for col in df.columns]
+
+        rowData = df.to_dict(orient="records")
+
+        # Get the filters.
+        filters = dataset["meta"].get("filters")
+
+        if filters is None:
+            markdown_component = "No filters for dataset found."
+        else:
+            # NOTE: from ChatGPT
+            # Convert the dictionary to a pretty-printed JSON string
+            pretty_json = json.dumps(filters, indent=2)
+
+            # Using dcc.Markdown for syntax highlighting
+            markdown_component = dcc.Markdown(f"```json\n{pretty_json}\n```")
+
+        return columnDefs, rowData, markdown_component
+
+    return [], [], []
+
+
+@callback(
+    Output("delete-dataset-btn", "disabled", allow_duplicate=True),
+    Input("dataset-dropdown", "options"),
+    prevent_initial_call=True,
+)
+def disable_delete_button(datasets):
+    # Disable the delete button if no dataset is available.
+    return False if len(datasets) else True
