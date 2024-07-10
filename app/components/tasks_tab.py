@@ -4,7 +4,7 @@ from utils.mongo_utils import get_mongo_db, add_many_to_collection
 from os import getenv
 from girder_client import GirderClient
 
-from components.cli_panel import cli_panel
+from components.tasks_panels import cli_panel, images_panel
 from components.modals import create_task_modal, delete_task_modal
 
 tasks_tab = html.Div(
@@ -38,10 +38,18 @@ tasks_tab = html.Div(
                 ),
             ],
             justify="start",
+            align="center",
             style={"marginTop": 5, "marginLeft": 5, "marginBottom": 5},
         ),
         dcc.Tabs(
             [
+                dcc.Tab(
+                    label="Images",
+                    value="images",
+                    children=images_panel,
+                    selected_className="custom-subtab--selected",
+                    className="custom-subtab",
+                ),
                 dcc.Tab(
                     label="CLI",
                     value="cli",
@@ -57,7 +65,7 @@ tasks_tab = html.Div(
                     className="custom-subtab",
                 ),
             ],
-            value="cli",
+            value="images",
             style={"marginTop": 5},
         ),
         create_task_modal,

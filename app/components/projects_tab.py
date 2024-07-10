@@ -62,6 +62,7 @@ projects_tab = html.Div(
                 ),
             ],
             justify="start",
+            align="center",
             style={"marginTop": 5, "marginLeft": 5, "marginBottom": 5},
         ),
         images_table,

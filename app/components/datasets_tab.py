@@ -52,6 +52,7 @@ datasets_tab = html.Div(
                 ),
             ],
             justify="start",
+            align="center",
             style={"marginTop": 5, "marginLeft": 5},
         ),
         dcc.Tabs(
