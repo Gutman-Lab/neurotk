@@ -65,7 +65,7 @@ tasks_tab = html.Div(
                     className="custom-subtab",
                 ),
             ],
-            value="images",
+            value="cli",
             style={"marginTop": 5},
         ),
         create_task_modal,

@@ -21,8 +21,22 @@ images_table = AgGrid(
         "paginationAutoPageSize": True,
         "rowSelection": "multiple",
         "suppressRowClickSelection": True,
+        "sideBar": {
+            "toolPanels": [
+                {
+                    "id": "filters",
+                    "labelDefault": "Filters",
+                    "labelKey": "filters",
+                    "iconKey": "filter",
+                    "toolPanel": "agFiltersToolPanel",
+                },
+                # Include other tool panels as needed
+            ],
+            "defaultToolPanel": "filters",
+        },
     },
     style={"height": "50vh"},
+    # enableEnterpriseModules=True,
 )
 
 projects_tab = html.Div(
@@ -202,12 +216,22 @@ def update_project_images_table(project_id, user_data):
         """
         items = {}
 
-        for images in project["datasets"].values():
+        for dataset, images in project["datasets"].items():
             for image in images:
                 if image["_id"] in items:
                     items[image["_id"]].update(image)
                 else:
                     items[image["_id"]] = image
+
+                # Add the dataset.
+                if "datasets" in items[image["_id"]]:
+                    items[image["_id"]]["datasets"].add(dataset)
+                else:
+                    items[image["_id"]]["datasets"] = {dataset}
+
+        # Make the datasets column a string.
+        for item in items.values():
+            item["datasets"] = ";".join(sorted(list(item["datasets"])))
 
         # Now reformat them into a list of dictionaries and format into dataframe.
         items = list(items.values())
@@ -217,7 +241,10 @@ def update_project_images_table(project_id, user_data):
         # Replace periods in column names with spaces.
         df.columns = [col.replace(".", " ") for col in df.columns]
 
-        columnDefs = [{"headerName": col, "field": col} for col in df.columns]
+        columnDefs = [
+            {"headerName": col, "field": col, "filter": "agSetColumnFilter"}
+            for col in df.columns
+        ]
 
         if len(columnDefs):
             columnDefs[0]["checkboxSelection"] = True

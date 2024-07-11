@@ -12,6 +12,19 @@ images_table = AgGrid(
         "paginationAutoPageSize": True,
         "rowSelection": "multiple",
         "suppressRowClickSelection": True,
+        "sideBar": {
+            "toolPanels": [
+                {
+                    "id": "filters",
+                    "labelDefault": "Filters",
+                    "labelKey": "filters",
+                    "iconKey": "filter",
+                    "toolPanel": "agFiltersToolPanel",
+                },
+                # Include other tool panels as needed
+            ],
+            "defaultToolPanel": "filters",
+        },
     },
     style={"height": "50vh"},
 )

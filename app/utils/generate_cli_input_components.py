@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 
 def generate_cli_input_components(
     xml_string: str,
+    params: dict | None = None,
     # paramSetsToIgnore=("Frame and Style", "Dask", "Girder API URL and Key"),
     # disabled=False,
     # params=None,
@@ -13,13 +14,16 @@ def generate_cli_input_components(
 
     Args:
         xml_string (str): The xml string to parse.
+        params (dict, optional): The parameters to set the default values for. Defaults to None.
 
     Returns:
         list: The list of dash components to render.
 
     """
-    # if params is None:
-    #     params = {}
+    # If parameters are passed then the inputs should be disabled.
+    disabled = False if params is None else True
+
+    params = {} if params is None else params
 
     # Format the xml string.
     root = ET.fromstring(xml_string)
@@ -49,16 +53,22 @@ def generate_cli_input_components(
                 # Integer / float style input.
                 label = parameter.find("label").text
 
+                input_id = parameter.find("name").text
+
+                value = (
+                    params[input_id]
+                    if input_id in params
+                    else parameter.find("default").text
+                )
+
                 if tag == "integer":
                     label += " (integer)"
-                    value = int(parameter.find("default").text)
+                    value = int(value)
                     step = 1
                 else:
                     label += " (number)"
-                    value = float(parameter.find("default").text)
+                    value = float(value)
                     step = 0.1
-
-                input_id = parameter.find("name").text
 
                 label_component = html.Label(label)
                 input_component = dcc.Input(
@@ -66,20 +76,33 @@ def generate_cli_input_components(
                     step=step,
                     id={"type": "dynamic-input", "index": input_id},
                     value=value,
+                    disabled=disabled,
                 )
             elif tag == "string":
                 input_id = parameter.find("name").text
-                value = parameter.find("default").text
+
+                value = (
+                    params[input_id]
+                    if input_id in params
+                    else parameter.find("default").text
+                )
 
                 label_component = html.Label(parameter.find("label").text + " (text)")
                 input_component = dcc.Input(
                     type="text",
                     id={"type": "dynamic-input", "index": input_id},
                     value=value,
+                    disabled=disabled,
                 )
             elif tag == "string-enumeration":
                 # These are specific options you can choose.
                 input_id = parameter.find("name").text
+
+                value = (
+                    params[input_id]
+                    if input_id in params
+                    else parameter.find("default").text
+                )
 
                 label_component = html.Label(parameter.find("label").text)
 
@@ -88,10 +111,10 @@ def generate_cli_input_components(
                 input_component = dcc.Dropdown(
                     id={"type": "dynamic-input", "index": input_id},
                     options=[{"label": op, "value": op} for op in options],
-                    value=parameter.find("default").text,
+                    value=value,
                     clearable=False,
                     style={"minWidth": 300},
-                    # disabled=disabled,
+                    disabled=disabled,
                 )
             elif tag == "region":
                 region_flag = True
