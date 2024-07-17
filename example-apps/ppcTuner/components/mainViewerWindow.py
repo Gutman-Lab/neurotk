@@ -26,6 +26,19 @@ roiCoords_store = dcc.Store(
 
 ppcControls = html.Div("PPC Controls go here")
 
+ppcRoi_img = dbc.Card(
+    [
+        roiCoords_store,
+        html.H4("PPC Roi", className="card-title"),
+        dbc.CardImg(
+            id="ppcRoi_img",
+        ),
+    ],
+    # loaded image size (w and l)
+    style={"width": 256},
+)
+
+
 showRoi = dbc.Button(
     "Show ROI",
     id="show-roi",
@@ -35,18 +48,6 @@ showRoi = dbc.Button(
 )
 
 tuningControls = dbc.Row([ppc_params_controls, showRoi])
-
-
-ppcRoi_img = dbc.Card(
-    [
-        roiCoords_store,
-        html.H4("PPC Roi", className="card-title"),
-        dbc.CardImg(
-            id="ppcRoi_img",
-        ),
-    ],
-    style={"width": 256},
-)
 
 
 ppcResults_img = dbc.Card(
