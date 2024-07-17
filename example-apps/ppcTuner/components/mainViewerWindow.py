@@ -20,7 +20,7 @@ import settings as s
 roiCoords_store = dcc.Store(
     id="roiCoords_store",
     data={"startX": 1000, "startY": 800, "width": 256, "height": 256},
-) # It;s the bounding box we want to select
+)  # It;s the bounding box we want to select
 
 
 # ppcControls = html.Div("PPC Controls go here")
@@ -34,6 +34,11 @@ ppcRoi_img = dbc.Card(
         ),
     ],
     # loaded image size (w and l)
+    style={"width": 256},
+)
+
+ppcROI_np_img = dbc.Card(
+    [html.H4("PPC NP Image", className="card-title"), html.Div(id="ppcROI_np_img")],
     style={"width": 256},
 )
 
@@ -55,7 +60,7 @@ showRoi = dbc.Button(
 tuningControls = dbc.Row([ppc_params_controls, showRoi])
 
 
-# This is the complete WSI with the zoomable tools, from DashpaperDragon 
+# This is the complete WSI with the zoomable tools, from DashpaperDragon
 osdViewer = dbc.Card(
     [
         html.H4("Zoomable Image!", className="card-title"),
@@ -69,7 +74,7 @@ osdViewer = dbc.Card(
 # Three columns in one row, images and panel. The calues are the size of each element
 viewerPanel = dbc.Row(
     [
-        dbc.Col([ppcRoi_img, ppcResults_img], width=3),
+        dbc.Col([ppcRoi_img, ppcROI_np_img, ppcResults_img], width=3),
         dbc.Col(osdViewer, width=6),
         dbc.Col(tuningControls, width=3),
     ]

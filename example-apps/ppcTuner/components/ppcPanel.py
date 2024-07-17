@@ -8,6 +8,7 @@ import pickle
 from utils.dsaHelperFunctions import (
     getImageRegion_as_NP,
     numpy_mask_to_colored_html_img,
+    numpy_array_to_html_img,
 )
 import settings as s
 
@@ -96,6 +97,7 @@ ppc_params_controls = html.Div(
 @callback(
     Output("curPPCParams", "children"),
     Output("ppcResults_img", "children"),
+    Output("ppcROI_np_img", "children"),
     [Input({"type": "ppcParams", "value": ALL}, "value")],
     [State("roiCoords_store", "data")],
 )
@@ -103,12 +105,19 @@ def updatePPCparams(values, roiCoords):
     # print(values)
     print(roiCoords)
     ctx = callback_context
-    # print(ctx.inputs_list)
+    print(ctx.inputs_list)
 
     paramDict = {"hue_value": 0.1, "hue_width": 0.5, "saturation_minimum": 0.2}
-
+    ## Things you need to pull out..
+    ## It's an array of arrays.. woo hoo
+    ## For each proprety, we need id.type.value to get the name of the key/property.. and then just "value" to get the value that was modified
+    ## This then needs to be put into a dictionary.. into a namped tumple/param magical thing and passed to the function
     ppcROI = getImageRegion_as_NP(
-        s.sampleImageId, roiCoords["startX"], roiCoords["startY"], 256, 256
+        s.sampleImageId,
+        roiCoords["startX"],
+        roiCoords["startY"],
+        roiCoords["width"],
+        roiCoords["height"],
     )
 
     ppcResults, ppcOutputImg = runPPC(ppcROI, paramDict)
@@ -116,7 +125,11 @@ def updatePPCparams(values, roiCoords):
     # Convert and display the label mask as an image in Dash
     # image_component = numpy_array_to_html_img(label_mask)
 
-    return values, numpy_mask_to_colored_html_img(ppcOutputImg)
+    return (
+        values,
+        numpy_mask_to_colored_html_img(ppcOutputImg),
+        numpy_array_to_html_img(ppcROI),
+    )
 
 
 ## Since we are NOT running on the whole slide, we can use the positive_pixel_count
@@ -131,12 +144,12 @@ def runPPC(
 
     ppcParams = positive_pixel_count.Parameters(
         hue_value=0.1,
-        hue_width=0.5,
+        hue_width=0.3,
         saturation_minimum=0.2,
         intensity_upper_limit=197 / 255,
         intensity_weak_threshold=175 / 255,
         intensity_strong_threshold=100 / 255,
-        intensity_lower_limit=0.0,
+        intensity_lower_limit=0.2,
     )
 
     ppcResult, ppcOutputImage = positive_pixel_count.count_image(imgROI, ppcParams)
