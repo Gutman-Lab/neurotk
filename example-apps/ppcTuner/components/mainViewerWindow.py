@@ -15,17 +15,16 @@ from utils.dashPaperDragon_helpers import get_box_instructions
 from components.ppcPanel import ppc_params_controls
 import settings as s
 
-## SAMPLE IMAGE is a small thumbnail I am pulling from the DSA prime
-
-
+## SAMPLE IMAGE is a small thumbnail I am pulling from the DSA prime (upper left)
+# store and share data between callbacks.
 roiCoords_store = dcc.Store(
     id="roiCoords_store",
     data={"startX": 1000, "startY": 800, "width": 256, "height": 256},
-)
+) # It;s the bounding box we want to select
 
 
-ppcControls = html.Div("PPC Controls go here")
-
+# ppcControls = html.Div("PPC Controls go here")
+# display content within a card-like structure likee images, text, buttons
 ppcRoi_img = dbc.Card(
     [
         roiCoords_store,
@@ -38,6 +37,11 @@ ppcRoi_img = dbc.Card(
     style={"width": 256},
 )
 
+ppcResults_img = dbc.Card(
+    [html.H4("PPC Image", className="card-title"), html.Div(id="ppcResults_img")],
+    style={"width": 256},
+)
+
 
 showRoi = dbc.Button(
     "Show ROI",
@@ -47,15 +51,11 @@ showRoi = dbc.Button(
     className="mr-4 btn btn-primary",
 )
 
+# These are the parameters like hue saturation, etc.
 tuningControls = dbc.Row([ppc_params_controls, showRoi])
 
 
-ppcResults_img = dbc.Card(
-    [html.H4("PPC Image", className="card-title"), html.Div(id="ppcResults_img")],
-    style={"width": 256},
-)
-
-
+# This is the complete WSI with the zoomable tools, from DashpaperDragon 
 osdViewer = dbc.Card(
     [
         html.H4("Zoomable Image!", className="card-title"),
@@ -66,6 +66,7 @@ osdViewer = dbc.Card(
     ]
 )
 
+# Three columns in one row, images and panel. The calues are the size of each element
 viewerPanel = dbc.Row(
     [
         dbc.Col([ppcRoi_img, ppcResults_img], width=3),
@@ -88,6 +89,8 @@ mainViewer = html.Div(
 
 
 #           src=f"{s.dsaBaseUrl}item/{s.sampleImageId}/tiles/region?left={startX}&top={startY}&regionWidth={width}&regionHeight={height}"
+# callback triggers inputToPaper after the button with the ID show-roi is clicked Input("show-roi", "n_clicks")
+# It also updates the src part of ppcRoi_img
 @callback(
     Output("osd-viewer", "inputToPaper"),
     Output("ppcRoi_img", "src"),
@@ -103,6 +106,7 @@ def show_roi(n_clicks, roiCoords):
     width = roiCoords["width"]
     height = roiCoords["height"]
 
+    # extracts the roiCoords data startX, ... from the roiCoords_store. And calls get_box_instructions
     ppcRoi = get_box_instructions(
         startX,
         startY,
