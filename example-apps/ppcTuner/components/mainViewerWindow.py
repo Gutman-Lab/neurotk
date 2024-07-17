@@ -38,7 +38,8 @@ ppcRoi_img = dbc.Card(
 )
 
 ppcROI_np_img = dbc.Card(
-    [html.H4("PPC NP Image", className="card-title"), html.Div(id="ppcROI_np_img")],
+    [html.H4("PPC NP Image", className="card-title"),
+     html.Div(id="ppcROI_np_img")],
     style={"width": 256},
 )
 
