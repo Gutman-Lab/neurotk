@@ -61,6 +61,68 @@ showRoi = dbc.Button(
 tuningControls = dbc.Row([ppc_params_controls, showRoi])
 
 
+# # This is the complete WSI with the zoomable tools, from DashpaperDragon
+# osdViewer = dbc.Card(
+#     [
+#         html.H4("Zoomable Image!", className="card-title"),
+#         dash_paperdragon.DashPaperdragon(
+#             id="osd-viewer",
+#             tileSources=[f"{s.dsaBaseUrl}item/{s.sampleImageId}/tiles/dzi.dzi"],
+#         ),
+#     ]
+# )
+
+# # Three columns in one row, images and panel. The calues are the size of each element. 
+# # The callback for ppcResults and ppcROI_np is in ppcPanel.py
+# viewerPanel = dbc.Row(
+#     [
+#         dbc.Col([ppcRoi_img, ppcROI_np_img, ppcResults_img], width=3),
+#         dbc.Col(osdViewer, width=6),
+#         dbc.Col(tuningControls, width=3),
+#     ]
+# )
+
+
+# mainViewer = html.Div(
+#     [
+#         viewerPanel,
+#     ]
+# )
+
+coordinate_inputs = dbc.Row(
+    [
+        dbc.Col(
+            [
+                dbc.Label("Coordinate X"),
+                dbc.Input(id="input-startX", type="number", placeholder="Coordinate X", value=1000),
+            ],
+            width=3,
+        ),
+        dbc.Col(
+            [
+                dbc.Label("Coordinate Y"),
+                dbc.Input(id="input-startY", type="number", placeholder="Coordinate Y", value=800),
+            ],
+            width=3,
+        ),
+        dbc.Col(
+            [
+                dbc.Label("Width"),
+                dbc.Input(id="input-width", type="number", placeholder="Width", value=256),
+            ],
+            width=3,
+        ),
+        dbc.Col(
+            [
+                dbc.Label("Height"),
+                dbc.Input(id="input-height", type="number", placeholder="Height", value=256),
+            ],
+            width=3,
+        ),
+    ],
+    className="mb-4",
+)
+
 # This is the complete WSI with the zoomable tools, from DashpaperDragon
 osdViewer = dbc.Card(
     [
@@ -69,24 +131,32 @@ osdViewer = dbc.Card(
             id="osd-viewer",
             tileSources=[f"{s.dsaBaseUrl}item/{s.sampleImageId}/tiles/dzi.dzi"],
         ),
+        coordinate_inputs,
     ]
 )
 
-# Three columns in one row, images and panel. The calues are the size of each element
+# Three columns in one row, images and panel. The calues are the size of each element. 
+# The callback for ppcResults and ppcROI_np is in ppcPanel.py
 viewerPanel = dbc.Row(
     [
-        dbc.Col([ppcRoi_img, ppcROI_np_img, ppcResults_img], width=3),
+        dbc.Col([ppcRoi_img, ppcROI_np_img, ppcResults_img], width=3, style={"margin-left": "20px"}),
         dbc.Col(osdViewer, width=6),
-        dbc.Col(tuningControls, width=3),
+        dbc.Col(tuningControls, width=2, className="custom-margin"),
     ]
 )
 
+mainViewer = html.Div([viewerPanel])
 
-mainViewer = html.Div(
-    [
-        viewerPanel,
-    ]
+@callback(
+    Output("roiCoords_store", "data"),
+    Input("input-startX", "value"),
+    Input("input-startY", "value"),
+    Input("input-width", "value"),
+    Input("input-height", "value"),
 )
+def update_roi_coords(startX, startY, width, height):
+    return {"startX": startX, "startY": startY, "width": width, "height": height}
+
 
 
 ## Create callbacks to show an ROI on the image, and then also use these coordinates
@@ -112,6 +182,7 @@ def show_roi(n_clicks, roiCoords):
     width = roiCoords["width"]
     height = roiCoords["height"]
 
+    print(startX, startY, width, height)
     # extracts the roiCoords data startX, ... from the roiCoords_store. And calls get_box_instructions
     ppcRoi = get_box_instructions(
         startX,
@@ -121,7 +192,7 @@ def show_roi(n_clicks, roiCoords):
         "red",
         {"class": "roi", "id": "roi"},
     )
-
+    print()
     roiimgSrc = f"{s.dsaBaseUrl}item/{s.sampleImageId}/tiles/region?left={startX}&top={startY}&regionWidth={width}&regionHeight={height}"
 
     return (

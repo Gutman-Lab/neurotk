@@ -89,7 +89,7 @@ def getImageThumb_as_NP(imageId, imageWidth=512):
 def getImageRegion_as_NP(imageId, startX, startY, regionWidth, regionHeight):
     try:
         pickledItem = gc.get(
-            f"item/{imageId}/tiles/region?top={startX}&left={startY}&regionWidth={regionWidth}&regionHeight={regionHeight}&encoding=pickle",
+            f"item/{imageId}/tiles/region?top={startY}&left={startX}&regionWidth={regionWidth}&regionHeight={regionHeight}&encoding=pickle",
             jsonResp=False,
         )
 

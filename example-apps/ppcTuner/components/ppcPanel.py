@@ -101,7 +101,7 @@ ppc_params_controls = html.Div(
     Output("ppcResults_img", "children"),
     Output("ppcROI_np_img", "children"),
     [Input({"type": "ppcParams", "value": ALL}, "value")],
-    [State("roiCoords_store", "data")],
+    [Input("roiCoords_store", "data")],#State
 )
 def updatePPCparams(values, roiCoords):
     # print(values)
@@ -127,14 +127,15 @@ def updatePPCparams(values, roiCoords):
     ## For each proprety, we need id.type.value to get the name of the key/property.. and then just "value" to get the value that was modified
     ## This then needs to be put into a dictionary.. into a namped tumple/param magical thing and passed to the function
     ppcROI = getImageRegion_as_NP(
-        s.sampleImageId,
+        s.sampleImageId, # This is our image id number
         roiCoords["startX"],
         roiCoords["startY"],
         roiCoords["width"],
         roiCoords["height"],
     )
+    
     # 256x256 mask
-    # print(roiCoords["startX"])
+    print(roiCoords["startX"])
     ppcResults, ppcOutputImg = runPPC(ppcROI,ppcParams)# paramDict)
 
     # Convert and display the label mask as an image in Dash
