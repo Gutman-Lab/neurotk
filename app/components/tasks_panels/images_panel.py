@@ -7,6 +7,7 @@ images_table = AgGrid(
     id="images-table",
     columnDefs=[],
     rowData=[],
+    enableEnterpriseModules=True,
     dashGridOptions={
         "pagination": True,
         "paginationAutoPageSize": True,
@@ -82,6 +83,10 @@ images_panel = html.Div(
     prevent_initial_call=True,
 )
 def update_images_table(columnDefs, rowData):
+    # Add "filter" to each column definition.
+    # for col in columnDefs:
+    #     col["filter"] = "agSetColumnFilter"
+
     return columnDefs, rowData
 
 

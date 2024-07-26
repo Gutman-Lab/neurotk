@@ -121,4 +121,4 @@ def update_task_dropdown(project_id, user_data):
     options = [{"label": task["name"], "value": task["_id"]} for task in tasks]
     options = sorted(options, key=lambda x: x["label"])  # sort by label
 
-    return options, options[0]["value"]
+    return options, options[0]["value"] if len(options) else None
