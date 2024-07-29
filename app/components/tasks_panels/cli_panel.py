@@ -3,12 +3,23 @@ import dash_bootstrap_components as dbc
 from pathlib import Path
 from pprint import pprint
 from girder_client import GirderClient
+import json
+from utils.cli_functions import submit_cli_job
 
 from os import getenv
 from os.path import join
 
 from utils import generate_cli_input_components
 from utils.mongo_utils import get_mongo_db, add_many_to_collection
+
+JOB_STATUS_CODES = {
+    0: "Pending",
+    1: "Queued",
+    2: "Running",
+    3: "Complete",
+    4: "Failed",
+    "submit_error": "submit_error",
+}
 
 annotations_panel = dbc.Container(
     dbc.Card(
@@ -160,6 +171,7 @@ cli_panel = html.Div(
 )
 def start_cli_dropdown(_):
     # Runs at the beginning of the app to load the available CLIs.
+    # NOTE: This could be defined at the component level, does not need to be a callback.
     options = []
 
     for fp in Path("cli-xmls").iterdir():
@@ -203,6 +215,21 @@ def choose_cli_from_selected_task(task_id, user_data, cli_options):
 
 
 @callback(
+    Output("task-store", "data", allow_duplicate=True),
+    [
+        Input("task-dropdown", "value"),
+        State("user-store", "data"),
+    ],
+    prevent_initial_call=True,
+)
+def update_task_store(task_id, user_data):
+    # Update the task store.
+    task = get_mongo_db()["tasks"].find_one({"_id": task_id, "user": user_data["user"]})
+
+    return task
+
+
+@callback(
     [
         Output("cli-inputs", "children"),
         Output("region-panel", "style"),
@@ -214,24 +241,19 @@ def choose_cli_from_selected_task(task_id, user_data, cli_options):
         Output("search-annotations-btn", "disabled"),
     ],
     [
-        Input("cli-dropdown", "value"),
-        State("user-store", "data"),
+        Input("task-store", "data"),
+        State("cli-dropdown", "value"),
         State("task-dropdown", "value"),
         State("region-dropdown", "options"),
     ],
     prevent_initial_call=True,
 )
-def load_cli_inputs(cli_fp, user_data, task_id, region_options):
+def load_cli_inputs(task, cli_fp, task_id, region_options):
     # Load the appropriate UI for the CLI selected.
     # Read the XML file.
-    if task_id and len(cli_fp):
+    if task_id and cli_fp is not None and len(cli_fp):
         with open(join("cli-xmls", cli_fp + ".xml"), "r") as fp:
             xml_content = fp.read().strip()
-
-        # If the CLI has already been run, pass the information to the UI to set the values.
-        task = get_mongo_db()["tasks"].find_one(
-            {"_id": task_id, "user": user_data["user"]}
-        )
 
         params = task.get("meta", {}).get("params")
 
@@ -341,19 +363,22 @@ def update_cli_images_count(row_data, selected_rows):
 
 
 @callback(
-    Output("task-progress", "children"),
+    [Output("task-progress", "children"), Output("task-store", "data")],
     [
         Input("run-task-btn", "n_clicks"),
         State("images-table", "rowData"),
         State("images-table", "virtualRowData"),
         State("user-store", "data"),
         State("cli-dropdown", "value"),
+        State("task-dropdown", "value"),
         State({"type": "dynamic-input", "index": ALL}, "value"),
         State({"type": "dynamic-input", "index": ALL}, "id"),
     ],
     prevent_initial_call=True,
 )
-def run_task(n_clicks, row_data, selected_rows, user_data, selected_cli, *args):
+def run_task(
+    n_clicks, row_data, selected_rows, user_data, selected_cli, task_id, *args
+):
     # Run task on selected rows.
     if n_clicks:
         """NOTE: logic
@@ -366,24 +391,34 @@ def run_task(n_clicks, row_data, selected_rows, user_data, selected_cli, *args):
         gc = GirderClient(apiUrl=getenv("DSA_API_URL"))
         gc.token = user_data["token"]
 
+        # Find the task that is being run from database.
+        mongo_db = get_mongo_db()
+        task_record = mongo_db["tasks"].find_one(
+            {"_id": task_id, "user": user_data["user"]}
+        )
+
+        # Extract the task queue dictionary.
+        task_queue = task_record.get("task_queue", {})
+
         # Format the args, which are the CLI params.
         params = {}
 
         for index, value in zip(args[1], args[0]):
             params[index["index"]] = value
 
-        if selected_rows is not None:
-            rows = selected_rows
-        else:
-            rows = row_data
+        # Loop through each image (row).
+        rows = row_data if selected_rows is None else selected_rows
 
-        # For each row (image) run the CLI that has been selected.
-        statuses = []
+        ann_collection = mongo_db["annotations"]
 
         for row in rows:
-            # Check annotation database for a document that matches this query.
-            ann_collection = get_mongo_db()["annotations"]
+            # Check if the image is already in the task queue.
+            if row["_id"] in task_queue:
+                # Check that status of the CLI.
+                print("Task is already in task queue.")
+                break
 
+            # Check local database for an annotation document that matches this task.
             query = {
                 "itemId": row["_id"],
                 "annotation.name": params["docname"],
@@ -393,27 +428,55 @@ def run_task(n_clicks, row_data, selected_rows, user_data, selected_cli, *args):
             for k, v in params.items():
                 query[f"annotation.attributes.params.{k}"] = v
 
-            # Params should be added in the query as well.
             doc = ann_collection.find_one(query)
 
             if doc is None:
-                # Update the annotation database.
-                ann_docs = gc.get(
-                    f"annotation?itemId={row['_id']}&name={params['docname']}&limit=0&offset=0&sort=lowerName&sortdir=1"
+                """I don't have this annotation doc in the local database. Try to find it on the
+                DSA end.
+                """
+                ann_doc = gc.get(
+                    f"annotation?itemId={row['_id']}&name={params['docname']}&limit=1&offset=0&sort=lowerName&sortdir=1"
                 )
 
-                _ = add_many_to_collection(
-                    ann_collection,
-                    user_data["user"],
-                    {doc["_id"]: doc for doc in ann_docs},
-                )
+                if len(ann_doc):
+                    ann_doc = ann_doc[0]
+
+                    _ = add_many_to_collection(
+                        ann_collection,
+                        user_data["user"],
+                        {ann_doc["_id"]: ann_doc},
+                    )
 
                 doc = ann_collection.find_one(query)
 
-            if doc is None:
-                # The CLI must be run first.
-                pass
-            else:
-                statuses.append("Success")
+            # If the doc is still not found, then the task needs to be submitted.
+            # if doc is None:
+            #     # Submitting the job.
+            #     response = submit_cli_job(
+            #         selected_cli, row["_id"], params, gc, user_data["user"]
+            #     )
 
-    return ""
+            #     status = JOB_STATUS_CODES.get(response["status"], "unknown")
+
+            #     task_queue[row["_id"]] = {"status": status, "_id": response.get("_id")}
+
+            #     break
+            # else:
+            #     # The doc was found and thus the task has been run.
+            #     task_queue[row["_id"]] = {"status": "complete", "_id": None}
+
+            #     break
+
+        json_task_queue = json.dumps(task_queue, indent=4)
+
+        return (
+            html.Div(
+                [
+                    html.P("Task Queue:"),
+                    html.Pre(json_task_queue),
+                ]
+            ),
+            no_update,
+        )
+
+    return "", no_update

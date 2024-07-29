@@ -3,7 +3,7 @@ from os import getenv
 
 
 def get_mongo_db():
-    """Get the mongo client."""
+    """Get the mongo database."""
     mc = pymongo.MongoClient(
         f"mongodb://{getenv('MONGO_INITDB_ROOT_USERNAME')}:{getenv('MONGO_INITDB_ROOT_PASSWORD')}@mongodb:27017"
     )
