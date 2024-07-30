@@ -393,12 +393,13 @@ def run_task(
 
         # Find the task that is being run from database.
         mongo_db = get_mongo_db()
-        task_record = mongo_db["tasks"].find_one(
+        tasks_collection = mongo_db["tasks"]
+        task_record = tasks_collection.find_one(
             {"_id": task_id, "user": user_data["user"]}
         )
 
         # Extract the task queue dictionary.
-        task_queue = task_record.get("task_queue", {})
+        task_queue = task_record.get("meta", {}).get("task_queue", {})
 
         # Format the args, which are the CLI params.
         params = {}
@@ -411,12 +412,37 @@ def run_task(
 
         ann_collection = mongo_db["annotations"]
 
+        """
+        JOB_STATUS_CODES = {
+            0: "Pending",
+            1: "Queued",
+            2: "Running",
+            3: "Complete",
+            4: "Failed",
+            "submit_error": "submit_error",
+        }
+        """
+
         for row in rows:
             # Check if the image is already in the task queue.
             if row["_id"] in task_queue:
-                # Check that status of the CLI.
-                print("Task is already in task queue.")
-                break
+                # Check if the task is in queue.
+                if task_queue[row["_id"]]["status"] in ("Pending", "Queued", "Running"):
+                    # Check its status now.
+                    response = gc.get(f"job/{task_queue[row['_id']]['_id']}")
+
+                    status = JOB_STATUS_CODES.get(response["status"], "unknown")
+
+                    task_queue[row["_id"]] = {
+                        "status": status,
+                        "_id": response.get("_id"),
+                    }
+                else:
+                    # Later will append to a list that will plot the PIE chart.
+                    pass
+
+                # Don't need to do this again.
+                continue
 
             # Check local database for an annotation document that matches this task.
             query = {
@@ -431,52 +457,59 @@ def run_task(
             doc = ann_collection.find_one(query)
 
             if doc is None:
-                """I don't have this annotation doc in the local database. Try to find it on the
-                DSA end.
-                """
-                ann_doc = gc.get(
-                    f"annotation?itemId={row['_id']}&name={params['docname']}&limit=1&offset=0&sort=lowerName&sortdir=1"
+                # Add all annotations that have this name to the database.
+                ann_docs = gc.get(
+                    f"annotation?itemId={row['_id']}&name={params['docname']}&limit=0&offset=0&sort=lowerName&sortdir=1"
                 )
 
-                if len(ann_doc):
-                    ann_doc = ann_doc[0]
-
+                if len(ann_docs):
                     _ = add_many_to_collection(
                         ann_collection,
                         user_data["user"],
-                        {ann_doc["_id"]: ann_doc},
+                        {doc["_id"]: doc for doc in ann_docs},
                     )
 
+                # Query the database again.
                 doc = ann_collection.find_one(query)
 
             # If the doc is still not found, then the task needs to be submitted.
-            # if doc is None:
-            #     # Submitting the job.
-            #     response = submit_cli_job(
-            #         selected_cli, row["_id"], params, gc, user_data["user"]
-            #     )
+            if doc is None:
+                # Submitting the job.
+                response = submit_cli_job(
+                    selected_cli, row["_id"], params, gc, user_data["user"]
+                )
 
-            #     status = JOB_STATUS_CODES.get(response["status"], "unknown")
+                status = JOB_STATUS_CODES.get(response["status"], "unknown")
 
-            #     task_queue[row["_id"]] = {"status": status, "_id": response.get("_id")}
+                task_queue[row["_id"]] = {"status": status, "_id": response.get("_id")}
+            else:
+                # The doc was found and thus the task has been run.
+                task_queue[row["_id"]] = {"status": "complete", "_id": None}
 
-            #     break
-            # else:
-            #     # The doc was found and thus the task has been run.
-            #     task_queue[row["_id"]] = {"status": "complete", "_id": None}
+        # Update the the task item in the DSA and also in the database.
+        image_ids = task_record.get("meta", {}).get("images", [])
 
-            #     break
+        for r in rows:
+            if r["_id"] not in image_ids:
+                image_ids.append(r["_id"])
 
-        json_task_queue = json.dumps(task_queue, indent=4)
+        metadata = {
+            "cli": selected_cli,
+            "images": image_ids,
+            "params": params,
+            "task_queue": task_queue,
+        }
 
-        return (
-            html.Div(
-                [
-                    html.P("Task Queue:"),
-                    html.Pre(json_task_queue),
-                ]
-            ),
-            no_update,
+        item = gc.addMetadataToItem(task_id, metadata)
+
+        # Update the task in the database.
+        _ = tasks_collection.update_one(
+            {"_id": task_id, "user": user_data["user"]},
+            {"$set": {"meta": metadata}},
         )
+
+        item["user"] = user_data["user"]
+
+        return "Task submitted.", item
 
     return "", no_update
