@@ -1,3 +1,4 @@
 {
-    "PositivePixelCount": {"type": "python"}
+    "PositivePixelCount": {"type": "python"},
+    "TissueSegmentation": {"type": "python"}
 }
