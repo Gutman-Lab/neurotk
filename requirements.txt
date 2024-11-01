@@ -1,1 +1,3 @@
 dsa_helpers
+jupyter
+tqdm

@@ -6,7 +6,7 @@ services:
   # Database
   mongodb:
     image: mongo:7.0.6-jammy
-    container_name: neurotk_db
+    container_name: neurotk-mongodb
     volumes:
       - mongodb-data-volume:/data/db
     ports:
@@ -21,7 +21,7 @@ services:
   # Frontend.
   dash:
     build: app/
-    container_name: neurotk
+    container_name: neurotk-dash
     platform: linux/amd64
     volumes:
       - ./app:/app
@@ -31,24 +31,24 @@ services:
     command: python app.py
     depends_on:
       - mongodb
+      - celery
 
-  # # Backend and broker for Celery.
-  # redis:
-  #   container_name: neurotk_redis
-  #   image: redis:alpine
-  #   restart: always
-  #   env_file: .env
-  #   ports:
-  #     - 6379:6379
+  # Backend
+  redis:
+    container_name: neurotk-redis
+    image: redis:alpine
+    restart: always
+    ports:
+      - 6379:6379
 
-  # # Celery worker.
-  # celery:
-  #   container_name: neurotk_worker
-  #   platform: linux/amd64
-  #   build: app/
-  #   depends_on:
-  #     - redis
-  #   env_file: .env
-  #   volumes:
-  #     - ./app:/app
-  #   command: watchmedo auto-restart --directory=/app --pattern=*.py --recursive --  celery -A app.celery_app  --workdir=/app worker --loglevel=INFO
+  # Celery worker
+  celery:
+    container_name: neurotk-celery
+    platform: linux/amd64
+    build: app/
+    depends_on:
+      - redis
+    env_file: .env
+    volumes:
+      - ./app:/app
+    command: watchmedo auto-restart --directory=/app --pattern=*.py --recursive --  celery -A app.celery_app  --workdir=/app worker --loglevel=INFO

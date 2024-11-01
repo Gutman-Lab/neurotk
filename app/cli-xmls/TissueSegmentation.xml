@@ -1,81 +1,98 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <executable>
-  <category>npFxns</category>
-  <title>Tissue Detection</title>
-  <description>Detect NFTs using object dection deep learning model.</description>
-  <version>0.1.0</version>
-  <license>Apache 2.0</license>
-  <contributor>Juan Carlos Vizcarra</contributor>
+  <category>NeuroTK</category>
+  <title>Tissue Segmentation</title>
+  <description>Tissue segmentation on low resolution image using SegFormer for semantic segmentation.</description>
+  <version>1.0</version>
+  <contributor>Juan Carlos Vizcarra (Emory University)</contributor>
+  <acknowledgements>David Gutman</acknowledgements>
   <parameters>
-    <label>IO</label>
-    <description>Input/output parameters</description>
-    <image>
-      <name>in_file</name>
-      <label>Input image</label>
-      <channel>input</channel>
-      <index>0</index>
-      <description>Input image</description>
-    </image>
-    <integer>
-      <name>size</name>
-      <label>Size</label>
-      <index>1</index>
-      <description>Thumbnail size to do tissue detection on.</description>
-      <default>512</default>
-    </integer>
-    <float>
-      <name>thresh</name>
-      <label>Threshold</label>
-      <index>2</index>
-      <description>Threshold prediction mask, values from -1 to 1.</description>
-      <default>0.7</default>
-    </float>
-    <float>
-      <name>smooth</name>
-      <label>Smooth</label>
-      <index>3</index>
-      <description>Smooth the tissue contours.</description>
-      <default>0.1</default>
-    </float>
-    <integer>
-      <name>kernel</name>
-      <label>Gaussian Kernel Size</label>
-      <index>4</index>
-      <description>Kernel size of gaussian smoothing on prediction mask.</description>
-      <default>5</default>
-    </integer>
+    <label>I/O</label>
+    <description>Input/output parameters.</description>
     <string>
       <name>docname</name>
-      <label>docname</label>
-      <index>5</index>
-      <description>Annotation document name.</description>
-      <default>tissue</default>
+      <label>Output Document Name</label>
+      <index>0</index>
+      <description>Name of the output annotation document.</description>
+      <default>Tissue Segmentation</default>
     </string>
-    <file fileExtensions=".anot" reference="in_file">
-      <name>tissueAnnotationFile</name>
-      <label>Output Tissue Annotation File</label>
-      <description>Output NFT annotation file (*.anot)</description>
+    <image>
+      <name>inputImageFile</name>
+      <label>Input Image</label>
+      <channel>input</channel>
+      <index>1</index>
+      <description>Input image in which to count and classify positive pixels</description>
+    </image>
+    <float>
+      <name>mag</name>
+      <label>Thumbnail Magnification</label>
+      <index>2</index>
+      <description>Magnification of thumbnail image to use.</description>
+      <default>2.0</default>
+    </float>
+    <integer>
+      <name>tile_size</name>
+      <label>Tile Size</label>
+      <index>3</index>
+      <description>Tile size to use.</description>
+      <default>512</default>
+    </integer>
+    <integer>
+      <name>batch_size</name>
+      <label>Batch Size</label>
+      <index>4</index>
+      <description>Batch size to use.</description>
+      <default>8</default>
+    </integer>
+    <file fileExtensions=".anot" reference="inputImageFile">
+      <name>outputAnnotationFile</name>
+      <label>Image Annotation</label>
+      <description>Annotation to relate the image to the source (*.anot)</description>
       <channel>output</channel>
-      <index>6</index>
+      <longflag>image_annotation</longflag>
     </file>
   </parameters>
-
   <parameters advanced="true">
-    <label>Girder API URL and Key</label>
-    <description>A Girder API URL and token for Girder client</description>
+    <label>Frame and Style</label>
+    <description>Frame parameters</description>
     <string>
-      <name>girderApiUrl</name>
-      <longflag>api-url</longflag>
-      <label>Girder API URL</label>
-      <description>A Girder API URL (e.g., https://girder.example.com:443/api/v1)</description>
-      <default></default>
+      <name>frame</name>
+      <longflag>frame</longflag>
+      <label>Frame Index</label>
+      <description>Frame index in a multi-frame image</description>
+      <default>{#control:#current_image_frame#}</default>
     </string>
     <string>
-      <name>girderToken</name>
-      <longflag>girder-token</longflag>
-      <label>Girder Token</label>
-      <description>A Girder token</description>
+      <name>style</name>
+      <longflag>style</longflag>
+      <label>Style Options</label>
+      <description>Image style options for compositing a multi-frame image</description>
+      <default>{#control:#current_image_style#}</default>
+    </string>
+  </parameters>
+  <parameters advanced="true">
+    <label>Dask</label>
+    <description>Dask parameters</description>
+    <string>
+      <name>scheduler</name>
+      <label>Scheduler Address</label>
+      <description>Address of a dask scheduler in the format '127.0.0.1:8786'.  Not passing this parameter sets up a dask cluster on the local machine.  'multiprocessing' uses Python multiprocessing.  'multithreading' uses Python multiprocessing in threaded mode.</description>
+      <longflag>scheduler</longflag>
       <default></default>
     </string>
+    <integer>
+      <name>num_workers</name>
+      <label>Number of workers</label>
+      <description>Number of dask workers to start while setting up a local cluster internally. If a negative value is specified then the number of workers is set to number of cpu cores on the machine minus the number of workers specified.</description>
+      <longflag>num_workers</longflag>
+      <default>-1</default>
+    </integer>
+    <integer>
+      <name>num_threads_per_worker</name>
+      <label>Number of threads per worker</label>
+      <description>Number of threads to use per worker while setting up a local cluster internally. Must be a positive integer >= 1.</description>
+      <longflag>num_threads_per_worker</longflag>
+      <default>1</default>
+    </integer>
   </parameters>
 </executable>

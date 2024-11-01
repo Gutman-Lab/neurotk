@@ -2,7 +2,7 @@ from dash import html, callback, Output, Input, State, no_update
 import dash_bootstrap_components as dbc
 from os import getenv
 from girder_client import GirderClient
-from utils.mongo_utils import get_mongo_db
+from utils.utils import get_mongo_database
 
 delete_dataset_modal = html.Div(
     [
@@ -56,7 +56,7 @@ def toggle_delete_dataset_modal(n_clicks):
         Input("delete-dataset-modal-btn", "n_clicks"),
         State("dataset-dropdown", "value"),
         State("dataset-dropdown", "options"),
-        State("user-store", "data"),
+        State(getenv("LOGIN_STORE_ID"), "data"),
     ],
     prevent_initial_call=True,
 )
@@ -70,9 +70,9 @@ def delete_dataset(n_clicks, dataset_id, dataset_options, user_data):
         _ = gc.delete(f"item/{dataset_id}")
 
         # Remove it from the database.
-        db = get_mongo_db()["datasets"]
+        dataset_collection = get_mongo_database(user_data["user"])["datasets"]
 
-        db.delete_one({"_id": dataset_id, "user": user_data["user"]})
+        dataset_collection.delete_one({"_id": dataset_id})
 
         # Remove from the options.
         new_options = [

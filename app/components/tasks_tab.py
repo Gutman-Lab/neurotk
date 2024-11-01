@@ -1,17 +1,29 @@
-from dash import html, dcc, callback, Output, Input, State, no_update
+from dash import html, dcc
 import dash_bootstrap_components as dbc
-from utils.mongo_utils import get_mongo_db, add_many_to_collection
-from os import getenv
-from girder_client import GirderClient
 
-from components.tasks_panels import cli_panel, images_panel
-from components.modals import create_task_modal, delete_task_modal
+from components.modals import create_task_modal
+from components.modals import delete_task_modal
+from components.tasks_tab_tabs.images_table_tab import images_table_tab
+from components.tasks_tab_tabs.cli_tab import cli_tab
+from components.tasks_tab_tabs.annotations_tab import annotations_tab
 
 tasks_tab = html.Div(
     [
         dbc.Row(
             [
-                dbc.Col(html.Div("Task:", style={"fontWeight": "bold"}), width="auto"),
+                dbc.Col(html.Div("Project:"), width="auto"),
+                dbc.Col(html.Div(id="task_tab_project_name"), width=4),
+            ],
+            justify="start",
+            align="center",
+            style={"marginBottom": 10, "fontWeight": "bold", "color": "orange"},
+        ),
+        dbc.Row(
+            [
+                dbc.Col(
+                    html.Div("Task:", style={"fontWeight": "bold"}),
+                    width="auto",
+                ),
                 dbc.Col(
                     dcc.Dropdown(
                         id="task-dropdown",
@@ -39,86 +51,39 @@ tasks_tab = html.Div(
             ],
             justify="start",
             align="center",
-            style={"marginTop": 5, "marginLeft": 5, "marginBottom": 5},
+            style={"marginBottom": 10},
         ),
-        dcc.Tabs(
-            [
-                dcc.Tab(
-                    label="Images",
-                    value="images",
-                    children=images_panel,
-                    selected_className="custom-subtab--selected",
-                    className="custom-subtab",
-                ),
-                dcc.Tab(
-                    label="CLI",
-                    value="cli",
-                    children=cli_panel,
-                    selected_className="custom-subtab--selected",
-                    className="custom-subtab",
-                ),
-                dcc.Tab(
-                    label="Results",
-                    value="results",
-                    children=html.Div("Results"),
-                    selected_className="custom-subtab--selected",
-                    className="custom-subtab",
-                ),
-            ],
-            value="cli",
-            style={"marginTop": 5},
+        html.Div(
+            dcc.Tabs(
+                [
+                    dcc.Tab(
+                        label="Images",
+                        value="images",
+                        children=images_table_tab,
+                        selected_className="custom-subtab--selected",
+                        className="custom-subtab",
+                    ),
+                    dcc.Tab(
+                        label="Annotations",
+                        value="annotations",
+                        children=annotations_tab,
+                        selected_className="custom-subtab--selected",
+                        className="custom-subtab",
+                    ),
+                    dcc.Tab(
+                        label="CLI",
+                        value="cli",
+                        children=cli_tab,
+                        selected_className="custom-subtab--selected",
+                        className="custom-subtab",
+                    ),
+                ],
+                value="images",
+            ),
+            id="task_tab_content",
         ),
         create_task_modal,
         delete_task_modal,
-    ]
-)
-
-
-# Callbacks
-@callback(
-    [
-        Output("task-dropdown", "options", allow_duplicate=True),
-        Output("task-dropdown", "value", allow_duplicate=True),
     ],
-    [Input("project-dropdown", "value"), State("user-store", "data")],
-    prevent_initial_call=True,
+    style={"margin": 10},
 )
-def update_task_dropdown(project_id, user_data):
-    if project_id is None:
-        return [], None
-
-    # Look for tasks in database.
-    project = get_mongo_db()["projects"].find_one(
-        {"_id": project_id, "user": user_data["user"]}
-    )
-
-    # Look for tasks for this project.
-    tasks_collection = get_mongo_db()["tasks"]
-
-    tasks = list(
-        tasks_collection.find({"project_id": project_id, "user": user_data["user"]})
-    )
-
-    if not len(tasks):
-        # Pull from the DSA the tasks and add them to database.
-        gc = GirderClient(apiUrl=getenv("DSA_API_URL"))
-        gc.token = user_data["token"]
-
-        items = list(gc.listItem(project["tasks_id"]))
-
-        # Add them to the database.
-        tasks = {}
-
-        for item in items:
-            item["project_id"] = project_id
-
-            tasks[item["_id"]] = item
-
-        tasks = add_many_to_collection(tasks_collection, user_data["user"], tasks)
-
-        tasks = list(tasks.values())
-
-    options = [{"label": task["name"], "value": task["_id"]} for task in tasks]
-    options = sorted(options, key=lambda x: x["label"])  # sort by label
-
-    return options, options[0]["value"] if len(options) else None

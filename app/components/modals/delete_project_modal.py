@@ -2,7 +2,7 @@ from dash import html, Output, Input, State, no_update, callback
 import dash_bootstrap_components as dbc
 from girder_client import GirderClient
 from os import getenv
-from utils.mongo_utils import get_mongo_db
+from utils.utils import get_mongo_database
 
 delete_project_modal = html.Div(
     [
@@ -56,7 +56,7 @@ def toggle_delete_project_modal(n_clicks):
         Input("delete-project-modal-btn", "n_clicks"),
         State("project-dropdown", "value"),
         State("project-dropdown", "options"),
-        State("user-store", "data"),
+        State(getenv("LOGIN_STORE_ID"), "data"),
     ],
     prevent_initial_call=True,
 )
@@ -69,10 +69,10 @@ def delete_project(n_clicks, project_id, project_options, user_data):
 
         _ = gc.delete(f"folder/{project_id}")
 
-        # Remove it from the database.
-        db = get_mongo_db()["projects"]
+        # Get projects collection.
+        projects_collection = get_mongo_database(user_data["user"])["projects"]
 
-        db.delete_one({"_id": project_id, "user": user_data["user"]})
+        projects_collection.delete_one({"_id": project_id})
 
         # Remove from the options.
         project_options = [

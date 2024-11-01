@@ -2,7 +2,8 @@ from dash import html, callback, Output, Input, State, no_update
 import dash_bootstrap_components as dbc
 from girder_client import GirderClient
 from os import getenv
-from utils.mongo_utils import get_mongo_db
+from utils.utils import get_mongo_database
+from dsa_helpers.mongo_utils import add_many_to_collection
 
 create_task_modal = html.Div(
     [
@@ -13,7 +14,11 @@ create_task_modal = html.Div(
                     [
                         html.Div(
                             "Task name",
-                            style={"margin": 5, "marginTop": 5, "fontWeight": "bold"},
+                            style={
+                                "margin": 5,
+                                "marginTop": 5,
+                                "fontWeight": "bold",
+                            },
                         ),
                         dbc.Input(
                             id="new-task-name",
@@ -25,7 +30,11 @@ create_task_modal = html.Div(
                             "Task name exists.",
                             hidden=True,
                             id="create-task-failed",
-                            style={"color": "red", "fontWeight": "bold", "margin": 10},
+                            style={
+                                "color": "red",
+                                "fontWeight": "bold",
+                                "margin": 10,
+                            },
                         ),
                     ]
                 ),
@@ -95,7 +104,7 @@ def close_create_task_modal(n_clicks):
         Input("create-task-modal-btn", "n_clicks"),
         State("new-task-name", "value"),
         State("task-dropdown", "options"),
-        State("user-store", "data"),
+        State(getenv("LOGIN_STORE_ID"), "data"),
         State("project-dropdown", "value"),
     ],
     prevent_initial_call=True,
@@ -104,7 +113,13 @@ def create_task(n_clicks, task_name, task_options, user_data, project_id):
     # Create a new task.
     if n_clicks:
         if not len(task_name):
-            return no_update, no_update, "Task name cannot be empty.", False, True
+            return (
+                no_update,
+                no_update,
+                "Task name cannot be empty.",
+                False,
+                True,
+            )
 
         # Check if the task name already exists.
         if task_name in [option["label"] for option in task_options]:
@@ -114,20 +129,12 @@ def create_task(n_clicks, task_name, task_options, user_data, project_id):
         gc = GirderClient(apiUrl=getenv("DSA_API_URL"))
         gc.token = user_data["token"]
 
-        # Get project from database.
-        project = get_mongo_db()["projects"].find_one(
-            {"_id": project_id, "user": user_data["user"]}
-        )
-
-        # Create the task.
-        task_item = gc.createItem(project["tasks_id"], task_name, reuseExisting=True)
+        # Create task DSA item.
+        task_item = gc.createItem(project_id, task_name)
 
         # Add the item to mongo.
-        task_item["project_id"] = project_id
-        task_item["user"] = user_data["user"]
-        tasks_collection = get_mongo_db()["tasks"]
-
-        _ = tasks_collection.insert_one(task_item)
+        task_collection = get_mongo_database(user_data["user"])["tasks"]
+        _ = add_many_to_collection(task_collection, [task_item])
 
         # Append task to options.
         task_options.append({"label": task_name, "value": task_item["_id"]})
@@ -135,6 +142,6 @@ def create_task(n_clicks, task_name, task_options, user_data, project_id):
         # Sort by the label.
         task_options = sorted(task_options, key=lambda x: x["label"])
 
-        return task_options[0]["value"], task_options, no_update, True, False
+        return task_item["_id"], task_options, no_update, True, False
 
     return no_update, no_update, no_update, no_update, no_update

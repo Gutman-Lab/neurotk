@@ -2,7 +2,8 @@ from dash import html, callback, Output, Input, State, no_update
 import dash_bootstrap_components as dbc
 from girder_client import GirderClient
 from os import getenv
-from utils.mongo_utils import get_mongo_db
+from utils.utils import get_mongo_database
+from dsa_helpers.mongo_utils import add_many_to_collection
 
 create_project_modal = html.Div(
     [
@@ -96,7 +97,7 @@ def close_create_project_modal(n_clicks):
         Input("create-project-modal-btn", "n_clicks"),
         State("new-project-name", "value"),
         State("project-dropdown", "options"),
-        State("user-store", "data"),
+        State(getenv("LOGIN_STORE_ID"), "data"),
     ],
     prevent_initial_call=True,
 )
@@ -120,19 +121,11 @@ def create_project(n_clicks, project_name, project_options, user_data):
 
         # Create the projects folder.
         project_fld = gc.createFolder(projects_fld_id, project_name, public=False)
-        project_fld["user"] = user_data["user"]
-
-        # Create the Datasets and Tasks subfolders.
-        datasets_fld = gc.createFolder(project_fld["_id"], "Datasets", public=False)
-        tasks_fld = gc.createFolder(project_fld["_id"], "Tasks", public=False)
-
-        project_fld["datasets_id"] = datasets_fld["_id"]
-        project_fld["tasks_id"] = tasks_fld["_id"]
 
         # Add the folder to mongo.
-        db = get_mongo_db()["projects"]
+        projects_collection = get_mongo_database(user_data["user"])["projects"]
 
-        _ = db.insert_one(project_fld)
+        _ = add_many_to_collection(projects_collection, [project_fld])
 
         # Append the options.
         project_options.append({"label": project_name, "value": project_fld["_id"]})

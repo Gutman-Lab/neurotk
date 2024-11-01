@@ -1,21 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <executable>
-  <category>HistomicsTK</category>
+  <category>NeuroTK</category>
   <title>Positive Pixel Count</title>
   <description>Counts different types of positive pixels based on values in the HSI color space</description>
-  <version>0.1.0</version>
-  <documentation-url>https://digitalslidearchive.github.io/HistomicsTK</documentation-url>
-  <license>Apache 2.0</license>
-  <contributor>David Manthey (Kitware), Neal Siekierski (Kitware)</contributor>
-  <acknowledgements>This work is part of the HistomicsTK project.</acknowledgements>
+  <version>0.1</version>
+  <contributor>Juan Carlos Vizcarra (Emory University)</contributor>
+  <acknowledgements>This work is adapted from HistomicsTK.</acknowledgements>
   <parameters>
     <label>I/O</label>
     <description>Input/output parameters.</description>
+    <string>
+      <name>docname</name>
+      <label>Output Document Name</label>
+      <index>0</index>
+      <description>Name of the output annotation document.</description>
+      <default>Positive Pixel Count</default>
+    </string>
     <image>
       <name>inputImageFile</name>
       <label>Input Image</label>
       <channel>input</channel>
-      <index>0</index>
+      <index>1</index>
       <description>Input image in which to count and classify positive pixels</description>
     </image>
     <region shapes="rectangle,polygon,multipolygon">
@@ -28,52 +33,59 @@
     <float>
       <name>hue_value</name>
       <label>Hue Value</label>
-      <index>1</index>
-      <description>Center of the hue range in HSI space for the positive color, in the range [0, 1]</description>
-      <default>0.83</default>
+      <index>2</index>
+      <description>Center of the hue range in HSI space for the positive color, in the range [0, 1] (default tuned for aBeta).</description>
+      <default>0.05</default>
     </float>
     <float>
       <name>hue_width</name>
       <label>Hue Width</label>
-      <index>2</index>
-      <description>Width of the hue range in HSI space</description>
+      <index>3</index>
+      <description>Width of the hue range in HSI space (default tuned for aBeta).</description>
       <default>0.15</default>
     </float>
     <float>
       <name>saturation_minimum</name>
       <label>Minimum Saturation</label>
-      <index>3</index>
-      <description>Minimum saturation of positive pixels in HSI space, in the range [0, 1]</description>
+      <index>4</index>
+      <description>Minimum saturation of positive pixels in HSI space, in the range [0, 1] (default tuned for aBeta).</description>
       <default>0.05</default>
     </float>
     <float>
       <name>intensity_upper_limit</name>
       <label>Upper Intensity Limit</label>
-      <index>4</index>
-      <description>Intensity threshold in HSI space above which a pixel is considered negative, in the range [0, 1]</description>
+      <index>5</index>
+      <description>Intensity threshold in HSI space above which a pixel is considered negative, in the range [0, 1] (default tuned for aBeta).</description>
       <default>0.95</default>
     </float>
     <float>
       <name>intensity_weak_threshold</name>
       <label>Intensity Threshold for Weak Pixels</label>
-      <index>5</index>
-      <description>Intensity threshold in HSI space that separates weak-positive pixels (above) from plain positive pixels (below)</description>
-      <default>0.65</default>
+      <index>6</index>
+      <description>Intensity threshold in HSI space that separates weak-positive pixels (above) from plain positive pixels (below) (default tuned for aBeta).</description>
+      <default>0.75</default>
     </float>
     <float>
       <name>intensity_strong_threshold</name>
       <label>Intensity Threshold for Strong Pixels</label>
-      <index>6</index>
-      <description>Intensity threshold in HSI space that separates plain positive pixels (above) from strong positive pixels (below)</description>
-      <default>0.35</default>
+      <index>7</index>
+      <description>Intensity threshold in HSI space that separates plain positive pixels (above) from strong positive pixels (below) (default tuned for aBeta).</description>
+      <default>0.45</default>
     </float>
     <float>
       <name>intensity_lower_limit</name>
       <label>Lower Intensity Limit</label>
-      <index>7</index>
-      <description>Intensity threshold in HSI space below which a pixel is considered negative</description>
+      <index>8</index>
+      <description>Intensity threshold in HSI space below which a pixel is considered negative (default tuned for aBeta).</description>
       <default>0.05</default>
     </float>
+    <string>
+      <name>region_name</name>
+      <label>Region Name</label>
+      <index>9</index>
+      <description>For NeuroTK functionality.</description>
+      <default></default>
+    </string>
     <image fileExtensions=".tiff" reference="inputImageFile">
       <name>outputLabelImage</name>
       <longflag>outputLabelImage</longflag>
