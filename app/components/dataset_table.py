@@ -1,0 +1,13 @@
+from dash_ag_grid import AgGrid
+
+dataset_table = AgGrid(
+    id="dataset-table",
+    columnDefs=[],
+    rowData=[],
+    enableEnterpriseModules=True,
+    dashGridOptions={
+        "pagination": True,
+        "paginationAutoPageSize": True,
+    },
+    style={"height": "50vh"},
+)

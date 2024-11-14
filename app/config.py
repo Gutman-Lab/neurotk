@@ -25,3 +25,67 @@ PIE_CHART_COLOR_MAP = {
     "Error": "rgb(255, 0, 0)",
     "Canceled": "rgb(209, 207, 202)",
 }
+
+CLASSES = ["a", "b", "c", "d", "e", "f"]
+OSD_COCLORS = ["red", "orange", "yellow", "green", "blue", "purple"]
+
+DASH_PAPERDRAGON_CONFIG = {
+    "eventBindings": [
+        {
+            "event": "keyDown",
+            "key": "c",
+            "action": "cycleProp",
+            "property": "class",
+        },
+        {
+            "event": "keyDown",
+            "key": "x",
+            "action": "cyclePropReverse",
+            "property": "class",
+        },
+        {"event": "keyDown", "key": "d", "action": "deleteItem"},
+        {
+            "event": "keyDown",
+            "key": "n",
+            "action": "newItem",
+            "tool": "rectangle",
+        },
+        {
+            "event": "keyDown",
+            "key": "e",
+            "action": "editItem",
+            "tool": "rectangle",
+        },
+        {
+            "event": "mouseEnter",
+            "action": "dashCallback",
+            "callback": "mouseEnter",
+        },
+        {
+            "event": "mouseLeave",
+            "action": "dashCallback",
+            "callback": "mouseLeave",
+        },
+    ],
+    "callbacks": [
+        {"eventName": "item-created", "callback": "createItem"},
+        {"eventName": "property-changed", "callback": "propertyChanged"},
+        {"eventName": "item-deleted", "callback": "itemDeleted"},
+        {"eventName": "item-edited", "callback": "itemEdited"},
+    ],
+    "properties": {"class": CLASSES[0]},
+    "defaultStyle": {
+        "fillColor": OSD_COCLORS[0],
+        "strokeColor": OSD_COCLORS[0],
+        "rescale": {
+            "strokeWidth": 1,
+        },
+        "fillOpacity": 0.2,
+    },
+    "styles": {
+        "class": {
+            k: {"fillColor": c, "strokeColor": c}
+            for (k, c) in zip(CLASSES, OSD_COCLORS)
+        }
+    },
+}

@@ -3,6 +3,8 @@ dash[celery]
 dash-bootstrap-components
 watchdog==4.0.1
 dash_ag_grid
+dash-paperdragon
+
 # watchdog==4.0.1
 # dash-bootstrap-components==1.6.0
 # girder-client==3.2.3

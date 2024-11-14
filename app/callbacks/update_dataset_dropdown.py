@@ -1,7 +1,7 @@
 from dash import callback, Output, Input, State, ctx
 from os import getenv
 from dsa_helpers.mongo_utils import add_many_to_collection
-from utils.utils import get_mongo_database
+from utils import get_mongo_database
 from girder_client import GirderClient, HttpError
 
 
@@ -17,7 +17,8 @@ from girder_client import GirderClient, HttpError
     ],
 )
 def update_dataset_dropdown(user_data, n_clicks, dataset_id):
-    # Only run if there is user data.
+    """Update the dataset dropdown with the datasets available for the signed in
+    user."""
     if user_data is not None and len(user_data):
         # Get datasets collection.
         datasets_collection = get_mongo_database(user_data["user"])["datasets"]
@@ -25,7 +26,9 @@ def update_dataset_dropdown(user_data, n_clicks, dataset_id):
         # Get all the datasets available.
         datasets = list(datasets_collection.find({}))
 
-        if not len(datasets) or (ctx.triggered_id == "sync-datasets-btn" and n_clicks):
+        if not len(datasets) or (
+            ctx.triggered_id == "sync-datasets-btn" and n_clicks
+        ):
             # Look for datasets for my user.
             gc = GirderClient(apiUrl=getenv("DSA_API_URL"))
             gc.token = user_data["token"]
@@ -55,7 +58,8 @@ def update_dataset_dropdown(user_data, n_clicks, dataset_id):
 
         # List all the dataset items.
         options = [
-            {"label": dataset["name"], "value": dataset["_id"]} for dataset in datasets
+            {"label": dataset["name"], "value": dataset["_id"]}
+            for dataset in datasets
         ]
 
         # Set the value of the options to current selected one otherwise choose the first.

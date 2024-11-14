@@ -1,26 +1,34 @@
 from dash import html, dcc
 import dash_bootstrap_components as dbc
-from dash_ag_grid import AgGrid
-from components.modals import delete_dataset_modal
 
-dataset_table = AgGrid(
-    id="dataset-table",
-    columnDefs=[],
-    rowData=[],
-    enableEnterpriseModules=True,
-    dashGridOptions={
-        "pagination": True,
-        "paginationAutoPageSize": True,
-    },
-    style={"height": "50vh"},
-)
+import callbacks.update_dataset_dropdown
+import callbacks.sync_dataset_btn_disabled
+
+from components.dataset_table import dataset_table
+from components.modals.delete_dataset_modal import delete_dataset_modal
 
 datasets_tab = html.Div(
     [
         dbc.Row(
             [
                 dbc.Col(
-                    html.Div("Dataset:", style={"fontWeight": "bold"}), width="auto"
+                    [
+                        dbc.Button(
+                            html.I(className="fa-solid fa-arrows-rotate"),
+                            id="sync-datasets-btn",
+                            disabled=True,
+                            className="sync-btns",
+                        ),
+                        dbc.Tooltip(
+                            "Sync datasets from DSA.",
+                            target="sync-datasets-btn",
+                        ),
+                    ],
+                    width="auto",
+                ),
+                dbc.Col(
+                    html.Div("Dataset:", style={"fontWeight": "bold"}),
+                    width="auto",
                 ),
                 dbc.Col(
                     dcc.Dropdown(
@@ -29,15 +37,6 @@ datasets_tab = html.Div(
                         clearable=False,
                     ),
                     width=4,
-                ),
-                dbc.Col(
-                    dbc.Button(
-                        "Sync Datasets",
-                        id="sync-datasets-btn",
-                        className="custom-button",
-                        disabled=True,
-                    ),
-                    width="auto",
                 ),
                 dbc.Col(
                     dbc.Button(
@@ -51,7 +50,6 @@ datasets_tab = html.Div(
             ],
             justify="start",
             align="center",
-            style={"marginTop": 5, "marginLeft": 5},
         ),
         dcc.Tabs(
             [

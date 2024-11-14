@@ -6,6 +6,7 @@ from components.modals import delete_task_modal
 from components.tasks_tab_tabs.images_table_tab import images_table_tab
 from components.tasks_tab_tabs.cli_tab import cli_tab
 from components.tasks_tab_tabs.annotations_tab import annotations_tab
+from components.tasks_tab_tabs.results_tab import results_tab
 
 tasks_tab = html.Div(
     [
@@ -77,13 +78,21 @@ tasks_tab = html.Div(
                         selected_className="custom-subtab--selected",
                         className="custom-subtab",
                     ),
+                    dcc.Tab(
+                        label="Results",
+                        value="results",
+                        children=results_tab,
+                        selected_className="custom-subtab--selected",
+                        className="custom-subtab",
+                        style={"width": "100%"},
+                    ),
                 ],
-                value="images",
+                value="results",
             ),
             id="task_tab_content",
         ),
         create_task_modal,
         delete_task_modal,
     ],
-    style={"margin": 10},
+    style={"margin": 10, "width": "100%"},
 )

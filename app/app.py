@@ -4,13 +4,16 @@ from dash import Dash, html, dcc, CeleryManager
 from celery_worker import celery_app
 from dsa_helpers.dash.header import get_header
 from os import getenv
-from callbacks import *
-from components import *
+from components.tabs.datasets_tab import datasets_tab
 
 app = Dash(
     __name__,
     title="NeuroTK",
-    external_stylesheets=[dbc.themes.BOOTSTRAP],
+    external_stylesheets=[
+        dbc.themes.BOOTSTRAP,
+        dbc.icons.BOOTSTRAP,
+        dbc.icons.FONT_AWESOME,
+    ],
     background_callback_manager=CeleryManager(celery_app),
 )
 
@@ -33,20 +36,20 @@ app.layout = html.Div(
                     className="custom-tab",
                     selected_className="custom-tab--selected",
                 ),
-                dcc.Tab(
-                    label="Projects",
-                    value="projects",
-                    children=projects_tab,
-                    className="custom-tab",
-                    selected_className="custom-tab--selected",
-                ),
-                dcc.Tab(
-                    label="Tasks",
-                    value="tasks",
-                    children=tasks_tab,
-                    className="custom-tab",
-                    selected_className="custom-tab--selected",
-                ),
+                #         dcc.Tab(
+                #             label="Projects",
+                #             value="projects",
+                #             children=projects_tab,
+                #             className="custom-tab",
+                #             selected_className="custom-tab--selected",
+                #         ),
+                #         dcc.Tab(
+                #             label="Tasks",
+                #             value="tasks",
+                #             children=tasks_tab,
+                #             className="custom-tab",
+                #             selected_className="custom-tab--selected",
+                #         ),
             ],
         ),
     ],
