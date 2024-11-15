@@ -1,6 +1,6 @@
 from dash_ag_grid import AgGrid
 
-projects_tab_table = AgGrid(
+project_table = AgGrid(
     id="project-images-table",
     columnDefs=[],
     rowData=[],

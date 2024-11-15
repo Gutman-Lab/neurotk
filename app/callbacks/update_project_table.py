@@ -1,5 +1,7 @@
 from dash import callback, Output, Input, State, no_update
 from os import getenv
+
+from utils import get_mongo_database
 from utils.utils import get_project_items
 
 
@@ -16,9 +18,21 @@ from utils.utils import get_project_items
     ],
     prevent_initial_call=True,
 )
-def update_project_images_table(project_id, user_data):
+def update_project_table(project_id, user_data):
     if project_id:
-        column_defs, row_data = get_project_items(project_id, user_data["user"])
+        # Get the list of item ids for the project.
+        mongo_db = get_mongo_database(user_data["user"])
+
+        item_ids = (
+            mongo_db["projects"]
+            .find_one({"_id": project_id})
+            .get("meta", {})
+            .get("images", [])
+        )
+
+        column_defs, row_data = get_project_items(
+            item_ids, user_data["user"], token=user_data["token"]
+        )
 
         return (
             column_defs,

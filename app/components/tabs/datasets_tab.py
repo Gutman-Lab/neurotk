@@ -3,6 +3,8 @@ import dash_bootstrap_components as dbc
 
 import callbacks.update_dataset_dropdown
 import callbacks.sync_dataset_btn_disabled
+import callbacks.delete_dataset_btn_disabled
+import callbacks.update_dataset_table
 
 from components.dataset_table import dataset_table
 from components.modals.delete_dataset_modal import delete_dataset_modal
@@ -39,12 +41,18 @@ datasets_tab = html.Div(
                     width=4,
                 ),
                 dbc.Col(
-                    dbc.Button(
-                        "Delete Dataset",
-                        id="delete-dataset-btn",
-                        color="danger",
-                        disabled=True,
-                    ),
+                    [
+                        dbc.Button(
+                            html.I(className="fa-solid fa-trash"),
+                            id="delete-dataset-btn",
+                            color="danger",
+                            disabled=True,
+                        ),
+                        dbc.Tooltip(
+                            "Delete dataset.",
+                            target="delete-dataset-btn",
+                        ),
+                    ],
                     width="auto",
                 ),
             ],

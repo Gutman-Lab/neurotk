@@ -20,8 +20,10 @@ def update_dataset_dropdown(user_data, n_clicks, dataset_id):
     """Update the dataset dropdown with the datasets available for the signed in
     user."""
     if user_data is not None and len(user_data):
+        mongo_db = get_mongo_database(user_data["user"])  # mongo database
+
         # Get datasets collection.
-        datasets_collection = get_mongo_database(user_data["user"])["datasets"]
+        datasets_collection = mongo_db["datasets"]
 
         # Get all the datasets available.
         datasets = list(datasets_collection.find({}))
@@ -41,11 +43,28 @@ def update_dataset_dropdown(user_data, n_clicks, dataset_id):
 
                 datasets = list(gc.listItem(datasets_fld["_id"]))
 
+                items_collection = mongo_db["items"]
+
                 # Push the datasets to mongo.
                 _ = add_many_to_collection(
                     datasets_collection,
                     datasets,
                 )
+
+                # Get a list of all item metadata from datasets.
+                for dataset in datasets:
+                    dataset_items = dataset["meta"][
+                        "dataset"
+                    ]  # list of dictionaries.
+
+                    # Update the items.
+                    for item in dataset_items:
+                        items_collection.update_one(
+                            {"_id": item["_id"]},
+                            {"$set": item},
+                            upsert=True,
+                        )
+
             except HttpError:
                 # Could not find the user folder, create it.
                 datasets_fld = gc.get(

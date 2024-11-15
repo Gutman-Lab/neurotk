@@ -1,6 +1,6 @@
-from dash import callback, Output, Input, State, no_update, dcc
+from dash import callback, Output, Input, State, dcc
 from os import getenv
-from utils.utils import get_mongo_database
+from utils import get_mongo_database
 from pandas import json_normalize
 import json
 
@@ -17,9 +17,11 @@ import json
     ],
     prevent_initial_call=True,
 )
-def load_dataset_table(dataset_id, user_data):
+def update_dataset_table(dataset_id, user_data):
+    """Update the dataset table based on the dataset that is selected on the
+    dropdown."""
     # Load the dataset image data into table.
-    if dataset_id is not None:
+    if dataset_id is not None and len(dataset_id):
         # Get dataset mongo collection.
         dataset_collection = get_mongo_database(user_data["user"])["datasets"]
 

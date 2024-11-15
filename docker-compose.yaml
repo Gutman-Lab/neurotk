@@ -52,3 +52,14 @@ services:
     volumes:
       - ./app:/app
     command: watchmedo auto-restart --directory=/app --pattern=*.py --recursive --  celery -A app.celery_app  --workdir=/app worker --loglevel=INFO
+
+  # Dashboard
+  flower:
+    container_name: neurotk-dashboard
+    image: mher/flower:1.2
+    restart: always
+    ports:
+      - 5555:5555
+    depends_on:
+      - celery
+    env_file: .env

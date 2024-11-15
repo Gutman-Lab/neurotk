@@ -1,7 +1,7 @@
 from dash import callback, Output, Input
 from os import getenv
 from dsa_helpers.mongo_utils import add_many_to_collection
-from utils.utils import get_mongo_database
+from utils import get_mongo_database
 from girder_client import GirderClient, HttpError
 
 

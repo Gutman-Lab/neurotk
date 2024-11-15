@@ -1,12 +1,16 @@
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 
-from components.modals import create_task_modal
-from components.modals import delete_task_modal
-from components.tasks_tab_tabs.images_table_tab import images_table_tab
-from components.tasks_tab_tabs.cli_tab import cli_tab
-from components.tasks_tab_tabs.annotations_tab import annotations_tab
-from components.tasks_tab_tabs.results_tab import results_tab
+import callbacks.update_task_tab_project_name
+import callbacks.create_task_btn_disabled
+import callbacks.delete_task_btn_disabled
+import callbacks.update_task_dropdown
+
+from components.modals.create_task_modal import create_task_modal
+from components.modals.delete_task_modal import delete_task_modal
+from components.tabs.images_tab import images_tab
+from components.tabs.annotations_tab import annotations_tab
+from components.tabs.cli_tab import cli_tab
 
 tasks_tab = html.Div(
     [
@@ -30,23 +34,36 @@ tasks_tab = html.Div(
                         id="task-dropdown",
                         placeholder="Select task",
                         clearable=False,
+                        options=[],
                     ),
                     width=4,
                 ),
                 dbc.Col(
-                    dbc.Button(
-                        "Create Task",
-                        id="create-task-btn",
-                        className="custom-button",
-                    ),
+                    [
+                        dbc.Button(
+                            html.I(className="fa-regular fa-plus"),
+                            id="create-task-btn",
+                            className="custom-button",
+                        ),
+                        dbc.Tooltip(
+                            "Create new task.",
+                            target="create-task-btn",
+                        ),
+                    ],
                     width="auto",
                 ),
                 dbc.Col(
-                    dbc.Button(
-                        "Delete Task",
-                        color="danger",
-                        id="delete-task-btn",
-                    ),
+                    [
+                        dbc.Button(
+                            html.I(className="fa-solid fa-trash"),
+                            color="danger",
+                            id="delete-task-btn",
+                        ),
+                        dbc.Tooltip(
+                            "Delete task.",
+                            target="delete-task-btn",
+                        ),
+                    ],
                     width="auto",
                 ),
             ],
@@ -56,11 +73,12 @@ tasks_tab = html.Div(
         ),
         html.Div(
             dcc.Tabs(
-                [
+                value="cli",
+                children=[
                     dcc.Tab(
                         label="Images",
                         value="images",
-                        children=images_table_tab,
+                        children=images_tab,
                         selected_className="custom-subtab--selected",
                         className="custom-subtab",
                     ),
@@ -78,16 +96,7 @@ tasks_tab = html.Div(
                         selected_className="custom-subtab--selected",
                         className="custom-subtab",
                     ),
-                    dcc.Tab(
-                        label="Results",
-                        value="results",
-                        children=results_tab,
-                        selected_className="custom-subtab--selected",
-                        className="custom-subtab",
-                        style={"width": "100%"},
-                    ),
                 ],
-                value="results",
             ),
             id="task_tab_content",
         ),

@@ -1,5 +1,5 @@
 from dash import callback, Output, Input, State
-from utils.utils import get_mongo_database
+from utils import get_mongo_database
 from os import getenv
 from girder_client import GirderClient
 from dsa_helpers.mongo_utils import add_many_to_collection

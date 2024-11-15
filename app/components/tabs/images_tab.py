@@ -1,21 +1,9 @@
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 from dash_ag_grid import AgGrid
+import callbacks.update_images_table
 
-images_table = AgGrid(
-    id="images-table",
-    columnDefs=[],
-    rowData=[],
-    enableEnterpriseModules=True,
-    dashGridOptions={
-        "pagination": True,
-        "paginationAutoPageSize": True,
-        "rowSelection": "multiple",
-    },
-    style={"height": "50vh"},
-)
-
-images_table_tab = html.Div(
+images_tab = html.Div(
     [
         dbc.Row(
             dcc.RadioItems(
@@ -26,6 +14,17 @@ images_table_tab = html.Div(
                 id="images-radio",
             )
         ),
-        images_table,
+        AgGrid(
+            id="images-table",
+            columnDefs=[],
+            rowData=[],
+            enableEnterpriseModules=True,
+            dashGridOptions={
+                "pagination": True,
+                "paginationAutoPageSize": True,
+                "rowSelection": "multiple",
+            },
+            style={"height": "50vh"},
+        ),
     ],
 )

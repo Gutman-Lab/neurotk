@@ -1,10 +1,13 @@
 import pandas as pd
 from pathlib import Path
 import numpy as np
+from girder_client import GirderClient
+from os import getenv
+from dsa_helpers.mongo_utils import add_many_to_collection
 from utils import get_mongo_database
 
 
-def get_project_items(project_id, user):
+def get_project_items(item_ids, user, token=None):
     """For a selected project get all the items from the datasets, with
     metadata combined from all the datasets for each itemm.
 
@@ -13,36 +16,32 @@ def get_project_items(project_id, user):
     mongodb = get_mongo_database(user)
 
     # Get the project mongodb doc.
-    project_doc = mongodb["projects"].find_one({"_id": project_id})
+    items_collection = mongodb["items"]
+    items = list(items_collection.find({"_id": {"$in": item_ids}}))
 
-    # Check the datasets id.
-    dataset_ids = project_doc["meta"].get("datasets", [])
+    if token is not None:
+        # Extract the _id values of the found items
+        found_item_ids = [item["_id"] for item in items]
 
-    if not len(dataset_ids):
-        return [], []
+        # Determine the missing item_ids
+        missing_item_ids = set(item_ids) - set(found_item_ids)
 
-    # Get the collection of datasets.
-    datasets_collection = mongodb["datasets"]
+        if len(missing_item_ids):
+            # Authenticate girder client.
+            gc = GirderClient(apiUrl=getenv("DSA_API_URL"))
+            gc.token = token
 
-    # Loop through each dataset in project.
-    items = {}  # track all the items
+            # Get every item from the DSA.
+            new_items = []
 
-    for dataset_id in dataset_ids:
-        # Get the mongodb dataset doc.
-        dataset_doc = datasets_collection.find_one({"_id": dataset_id})
+            for item_id in missing_item_ids:
+                item = gc.getItem(item_id)
 
-        # Loop through the data.
-        for item in dataset_doc["meta"]["dataset"]:
-            # Check if item is already on the dictionary.
-            if item["_id"] in items:
-                # Update the item metadata.
-                items[item["_id"]].update(item)
-            else:
-                # Add the item metadata.
-                items[item["_id"]] = item
+                items.append(item)
+                new_items.append(item)
 
-    # Turn the dictionary into a list of dictionaries.
-    items = list(items.values())
+            # Add these new items to the mongo database.
+            _ = add_many_to_collection(items_collection, new_items)
 
     # Normalize the list of dictionaries.
     df = pd.json_normalize(items, sep=":")
@@ -53,6 +52,8 @@ def get_project_items(project_id, user):
     columnDefs = [
         {"headerName": col, "field": col, "filter": "agSetColumnFilter"}
         for col in df.columns
+        if col
+        != "id"  # bug in Faceted Search app, this is an internal mongo id
     ]
 
     return columnDefs, df.to_dict(orient="records")

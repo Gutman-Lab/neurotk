@@ -24,7 +24,9 @@ delete_dataset_modal = html.Div(
                                 ),
                                 width="auto",
                             ),
-                        ]
+                        ],
+                        align="center",
+                        justify="start",
                     )
                 ),
             ],
