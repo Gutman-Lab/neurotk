@@ -1,13 +1,15 @@
 from dash_ag_grid import AgGrid
+import callbacks.update_images_table
 
-project_table = AgGrid(
-    id="project-images-table",
+images_table = AgGrid(
+    id="images-table",
     columnDefs=[],
     rowData=[],
-    enableEnterpriseModules=False,
+    enableEnterpriseModules=True,
     dashGridOptions={
         "pagination": True,
         "paginationAutoPageSize": True,
+        "rowSelection": "multiple",
         "enableCellTextSelection": True,
         "ensureDomOrder": True,
     },

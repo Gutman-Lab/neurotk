@@ -2,8 +2,8 @@ from dash import callback, Output, Input, State
 from os import getenv
 from pathlib import Path
 
-from utils import generate_cli_input_components
-from utils.utils import read_xml_content, get_mongo_database
+from utils import generate_cli_input_components, get_mongo_database
+from utils.utils import read_xml_content
 
 
 @callback(
@@ -13,7 +13,7 @@ from utils.utils import read_xml_content, get_mongo_database
     ],
     [
         Input("task-dropdown", "value"),
-        State("cli-dropdown", "options"),
+        Input("cli-dropdown", "options"),
         State(getenv("LOGIN_STORE_ID"), "data"),
     ],
     prevent_initial_call=True,
@@ -23,7 +23,12 @@ def set_task_cli(task_id, cli_options, user_data):
     the first of the options task is not set yet.
 
     """
-    if task_id is not None and len(task_id):
+    if (
+        user_data is not None
+        and len(user_data)
+        and task_id is not None
+        and len(task_id)
+    ):
         # Get Mongo database.
         mongo_db = get_mongo_database(user_data["user"])
 

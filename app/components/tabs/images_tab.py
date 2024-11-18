@@ -1,7 +1,10 @@
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 from dash_ag_grid import AgGrid
-import callbacks.update_images_table
+from components.images_table import images_table
+
+import callbacks.update_task_dropdown
+import callbacks.load_cli_inputs
 
 images_tab = html.Div(
     [
@@ -14,17 +17,6 @@ images_tab = html.Div(
                 id="images-radio",
             )
         ),
-        AgGrid(
-            id="images-table",
-            columnDefs=[],
-            rowData=[],
-            enableEnterpriseModules=True,
-            dashGridOptions={
-                "pagination": True,
-                "paginationAutoPageSize": True,
-                "rowSelection": "multiple",
-            },
-            style={"height": "50vh"},
-        ),
+        images_table,
     ],
 )

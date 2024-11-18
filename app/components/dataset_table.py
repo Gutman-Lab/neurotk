@@ -8,6 +8,8 @@ dataset_table = AgGrid(
     dashGridOptions={
         "pagination": True,
         "paginationAutoPageSize": True,
+        "enableCellTextSelection": True,
+        "ensureDomOrder": True,
     },
     style={"height": "50vh"},
 )

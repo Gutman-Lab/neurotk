@@ -1,6 +1,11 @@
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 
+import callbacks.load_available_clis
+import callbacks.run_task_btn_disabled
+import callbacks.update_run_task_count
+import callbacks.run_task
+
 cli_tab = html.Div(
     dbc.Row(
         [
@@ -12,7 +17,9 @@ cli_tab = html.Div(
                             [
                                 dbc.Row(
                                     [
-                                        dbc.Col(html.Div("CLI:"), width="auto"),
+                                        dbc.Col(
+                                            html.Div("CLI:"), width="auto"
+                                        ),
                                         dbc.Col(
                                             dcc.Dropdown(
                                                 id="cli-dropdown",
@@ -34,28 +41,6 @@ cli_tab = html.Div(
                                 dbc.Row(
                                     [
                                         dbc.Col(
-                                            html.Div("Progress:"), width="auto"
-                                        ),
-                                        dbc.Col(
-                                            html.Progress(
-                                                id="task-progress",
-                                                max="100",
-                                                value="0",
-                                            ),
-                                            width=4,
-                                        ),
-                                    ],
-                                    id="task-progress-row",
-                                    align="center",
-                                    justify="start",
-                                    style={
-                                        "marginBottom": 10,
-                                        "display": "none",
-                                    },
-                                ),
-                                dbc.Row(
-                                    [
-                                        dbc.Col(
                                             dbc.Button(
                                                 "Run Task",
                                                 id="run-task-btn",
@@ -72,11 +57,41 @@ cli_tab = html.Div(
                                             ),
                                             width="auto",
                                         ),
+                                        dbc.Col(
+                                            html.Div(
+                                                id="run-task-count",
+                                                style={
+                                                    "color": "#00aa1d",
+                                                    "fontWeight": "bold",
+                                                },
+                                            ),
+                                            width="auto",
+                                        ),
                                     ],
                                     justify="start",
                                     align="center",
                                 ),
-                                html.Div(id="test-output"),
+                                dbc.Row(
+                                    [
+                                        dbc.Col(
+                                            html.Div("Progress:"), width="auto"
+                                        ),
+                                        dbc.Col(
+                                            html.Progress(
+                                                id="task-progress",
+                                                max="100",
+                                                value="0",
+                                            ),
+                                            width=4,
+                                        ),
+                                    ],
+                                    id="task-progress-row",
+                                    align="center",
+                                    justify="start",
+                                    style={
+                                        "marginTop": 10,
+                                    },
+                                ),
                             ]
                         ),
                     ],
