@@ -100,172 +100,174 @@ def run_task(
         # Setup the params.
         params = {k["index"]: v for k, v in zip(input_ids, input_values)}
 
-    #     # Get task document from the database.
-    #     task_doc = mongodb["tasks"].find_one({"_id": task_id})
+        # Get task document from the database.
+        task_doc = mongodb["tasks"].find_one({"_id": task_id})
 
-    #     if task_doc.get("meta"):
-    #         # Task has been previously run, add any new images to meta.
-    #         for row in row_data:
-    #             if row["_id"] not in task_doc["meta"]["images"]:
-    #                 task_doc["meta"]["images"][row["_id"]] = {
-    #                     "job_id": None,
-    #                     "status": None,
-    #                     "doc_id": None,
-    #                 }
-    #     else:
-    #         # New task, add the metadata for the task.
-    #         task_doc["meta"] = {
-    #             "cli_id": cli_id,
-    #             "cli_name": cli_metadata["name"],
-    #             "params": params,
-    #             "images": {
-    #                 row["_id"]: {
-    #                     "job_id": None,
-    #                     "status": None,
-    #                     "doc_id": None,
-    #                 }
-    #                 for row in row_data
-    #             },
-    #         }
+        if task_doc.get("meta"):
+            # Task has been previously run, add any new images to meta.
+            for row in row_data:
+                if row["_id"] not in task_doc["meta"]["images"]:
+                    task_doc["meta"]["images"][row["_id"]] = {
+                        "job_id": None,
+                        "status": None,
+                        "doc_id": None,
+                    }
+        else:
+            # New task, add the metadata for the task.
+            task_doc["meta"] = {
+                "cli_id": cli_id,
+                "cli_name": cli_metadata["name"],
+                "params": params,
+                "images": {
+                    row["_id"]: {
+                        "job_id": None,
+                        "status": None,
+                        "doc_id": None,
+                    }
+                    for row in row_data
+                },
+            }
 
-    #     # Update the task in the database and DSA.
-    #     task_doc = gc.addMetadataToItem(task_id, task_doc["meta"])
-    #     mongodb["tasks"].update_one({"_id": task_id}, {"$set": task_doc})
+        # Update DSA task item metadata.
+        task_doc = gc.addMetadataToItem(task_id, task_doc["meta"])
 
-    #     # Get the full item metadata for each image to run CLI on.
-    #     item_collection = mongodb["items"]
+        # Update the task document in local database.
+        mongodb["tasks"].update_one({"_id": task_id}, {"$set": task_doc})
 
-    #     items = []
-    #     new_items = []  # track new items to update on the local database
+        # Local database collection for items.
+        item_collection = mongodb["items"]
 
-    #     for row in row_data:
-    #         # Look for the item in the db.
-    #         item = item_collection.find_one({"_id": row["_id"]})
+        items = []
+        new_items = []  # track new items to update on the local database
 
-    #         if item is None:
-    #             item = gc.getItem(row["_id"])
-    #             new_items.append(item)
+        for row in row_data:
+            # Look for the item in the db.
+            item = item_collection.find_one({"_id": row["_id"]})
 
-    #         items.append(item)
+            if item is None:
+                item = gc.getItem(row["_id"])
+                new_items.append(item)
 
-    #     # Update the database with the new items.
-    #     if len(new_items):
-    #         _ = add_many_to_collection(item_collection, new_items)
+            items.append(item)
 
-    #     # Get the dictionary of job ids for the items.
-    #     images_job_info = task_doc["meta"]["images"]
+        # Update the database with the new items.
+        if len(new_items):
+            _ = add_many_to_collection(item_collection, new_items)
 
-    #     task_statuses = []  # track task status, returns from callback
+        # Get the dictionary of job ids for the items.
+        images_job_info = task_doc["meta"]["images"]
 
-    #     n_items = len(items)
+        task_statuses = []  # track task status, returns from callback
 
-    #     set_progress(("0", str(n_items)))
+        n_items = len(items)
 
-    #     # Loop through each image metadata.
-    #     for idx, item in enumerate(items):
-    #         item_id = item["_id"]
-    #         job_status = images_job_info[item_id]["status"]
+        set_progress(("0", str(n_items)))
 
-    #         if job_status is not None:
-    #             # There is a current status for the image.
-    #             if job_status in (
-    #                 "Queued",
-    #                 "Running",
-    #                 "Inactive",
-    #             ):
-    #                 # Update its status.
-    #                 job_status = cli_utils.check_job_status(
-    #                     gc, images_job_info[item_id]["job_id"]
-    #                 )
+        # Loop through each image metadata.
+        for idx, item in enumerate(items):
+            item_id = item["_id"]
+            job_status = images_job_info[item_id]["status"]
 
-    #                 images_job_info[item_id]["status"] = job_status
+            if job_status is not None:
+                # There is a current status for the image.
+                if job_status in (
+                    "Queued",
+                    "Running",
+                    "Inactive",
+                ):
+                    # Update its status.
+                    job_status = cli_utils.check_job_status(
+                        gc, images_job_info[item_id]["job_id"]
+                    )
 
-    #             if job_status == "Success":
-    #                 # Status says complete - double check by looking for doc.
-    #                 doc_found, doc_id = cli_utils.look_for_doc(
-    #                     gc, item_id, params, annotation_collection
-    #                 )
+                    images_job_info[item_id]["status"] = job_status
 
-    #                 if doc_found:
-    #                     images_job_info[item_id]["doc_id"] = doc_id
-    #                     task_statuses.append(job_status)
-    #                     continue
+                if job_status == "Success":
+                    # Status says complete - double check by looking for doc.
+                    doc_found, doc_id = cli_utils.look_for_doc(
+                        gc, item_id, params, annotation_collection
+                    )
 
-    #             if job_status in ("Queued", "Running", "Inactive"):
-    #                 # Still working on it.
-    #                 task_statuses.append(job_status)
-    #                 continue
+                    if doc_found:
+                        images_job_info[item_id]["doc_id"] = doc_id
+                        task_statuses.append(job_status)
+                        continue
 
-    #             # Job needs to be submitted again.
-    #             response = cli_utils.submit_cli(
-    #                 gc,
-    #                 cli_metadata,
-    #                 user_data["user"],
-    #                 params,
-    #                 item,
-    #                 user_fld["_id"],
-    #             )
-    #             response["doc_id"] = None
+                if job_status in ("Queued", "Running", "Inactive"):
+                    # Still working on it.
+                    task_statuses.append(job_status)
+                    continue
 
-    #             # Update the job metadata.
-    #             images_job_info[item_id] = response
-    #             task_statuses.append(response["status"])
-    #             continue
+                # Job needs to be submitted again.
+                response = cli_utils.submit_cli(
+                    gc,
+                    cli_metadata,
+                    user_data["user"],
+                    params,
+                    item,
+                    user_fld["_id"],
+                )
+                response["doc_id"] = None
 
-    #         # No status for the image found, look for the CLI output doc.
-    #         doc_found, doc_id = cli_utils.look_for_doc(
-    #             gc, item_id, params, annotation_collection
-    #         )
+                # Update the job metadata.
+                images_job_info[item_id] = response
+                task_statuses.append(response["status"])
+                continue
 
-    #         if doc_found:
-    #             images_job_info[item_id] = {
-    #                 "status": "Success",
-    #                 "job_id": None,
-    #                 "doc_id": doc_id,
-    #             }
-    #             task_statuses.append("Success")
-    #             continue
+            # No status for the image found, look for the CLI output doc.
+            doc_found, doc_id = cli_utils.look_for_doc(
+                gc, item_id, params, annotation_collection
+            )
 
-    #         # Not found, submit.
-    #         response = cli_utils.submit_cli(
-    #             gc,
-    #             cli_metadata,
-    #             user_data["user"],
-    #             params,
-    #             item,
-    #             user_fld["_id"],
-    #         )
-    #         response["doc_id"] = None
+            if doc_found:
+                images_job_info[item_id] = {
+                    "status": "Success",
+                    "job_id": None,
+                    "doc_id": doc_id,
+                }
+                task_statuses.append("Success")
+                continue
 
-    #         images_job_info[item_id] = response
-    #         task_statuses.append(response["status"])
+            # Not found, submit.
+            response = cli_utils.submit_cli(
+                gc,
+                cli_metadata,
+                user_data["user"],
+                params,
+                item,
+                user_fld["_id"],
+            )
+            response["doc_id"] = None
 
-    #         set_progress((str(idx + 1), str(n_items)))
+            images_job_info[item_id] = response
+            task_statuses.append(response["status"])
 
-    #     task_doc["meta"]["images"] = images_job_info
+            set_progress((str(idx + 1), str(n_items)))
 
-    #     mongodb["tasks"].update_one({"_id": task_id}, {"$set": task_doc})
+        task_doc["meta"]["images"] = images_job_info
 
-    #     # Update the metadata on the DSA end.
-    #     _ = gc.addMetadataToItem(task_id, {"images": images_job_info})
+        mongodb["tasks"].update_one({"_id": task_id}, {"$set": task_doc})
 
-    #     # Disable all properties.
-    #     set_progress(("0", "100"))
+        # Update the metadata on the DSA end.
+        _ = gc.addMetadataToItem(task_id, {"images": images_job_info})
 
-    #     # Count the occurrences of each status
-    #     status_counts = Counter(task_statuses)
+        # Disable all properties.
+        set_progress(("0", "100"))
 
-    #     # Create a pie chart using plotly.express
-    #     fig = px.pie(
-    #         names=list(status_counts.keys()),
-    #         values=list(status_counts.values()),
-    #         title="Task Status Distribution",
-    #         color=list(status_counts.keys()),
-    #         color_discrete_map=PIE_CHART_COLOR_MAP,
-    #     )
-    #     return True, ([True] * len(input_ids)), dcc.Graph(figure=fig)
+        # Count the occurrences of each status
+        status_counts = Counter(task_statuses)
 
-    # # Do not modify the disabled states.
-    # set_progress(("0", "100"))
+        # Create a pie chart using plotly.express
+        fig = px.pie(
+            names=list(status_counts.keys()),
+            values=list(status_counts.values()),
+            title="Task Status Distribution",
+            color=list(status_counts.keys()),
+            color_discrete_map=PIE_CHART_COLOR_MAP,
+        )
+        return True, ([True] * len(input_ids)), dcc.Graph(figure=fig)
+
+    # Do not modify the disabled states.
+    set_progress(("0", "100"))
 
     return no_update, ([no_update] * len(input_ids)), []

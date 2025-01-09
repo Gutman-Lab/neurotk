@@ -73,7 +73,7 @@ tasks_tab = html.Div(
         ),
         html.Div(
             dcc.Tabs(
-                value="cli",
+                value="annotations",
                 children=[
                     dcc.Tab(
                         label="Images",
