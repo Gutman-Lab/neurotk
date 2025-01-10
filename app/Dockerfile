@@ -1,16 +1,22 @@
-FROM python:3.11-slim-buster
+FROM python:3.12-slim
 
-ENV PYTHONUNBUFFERED True
+# Run Python in unbuffered mode.
+ENV PYTHONUNBUFFERED=True
+
+# Ignore warnings of using pip as the root user.
+ENV PIP_ROOT_USER_ACTION=ignore
 
 WORKDIR /app
 
+# Update package list.
+RUN apt-get update
+
 # Required for OpenCV.
-RUN apt-get update && apt-get install ffmpeg libsm6 libxext6 -y
+RUN apt-get install ffmpeg libsm6 libxext6 -y
 
-# Install packages.
-RUN pip install --no-cache-dir --upgrade pip
-RUN python -m pip install pymongo==4.8.0
+# NOTE: Install dependencies that take a while to install (could be removed later).
+RUN pip install --no-cache-dir dsa-helpers
 
-# Install packages from requirements.txt.
+# Install Python dependencies from local requirements.txt.
 COPY requirements.txt /app
 RUN pip install --no-cache-dir -r requirements.txt

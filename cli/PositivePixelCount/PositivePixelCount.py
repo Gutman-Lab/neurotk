@@ -111,7 +111,9 @@ def main(args):
     ts = large_image.getTileSource(args.inputImageFile, style=args.style)
 
     # Create a sink for the output label image if specified
-    sink = large_image.new() if getattr(args, "outputLabelImage", None) else None
+    sink = (
+        large_image.new() if getattr(args, "outputLabelImage", None) else None
+    )
 
     print("This is my sink", sink)
 
@@ -208,15 +210,17 @@ def main(args):
         # If tile count is small or Dask scheduler is disabled, process tiles sequentially
         for tile in ts.tileIterator(**tiparams):
             tile_position = tile["tile_position"]["position"]
-            result, ppcimg, x, y, mask, tile_start_time = tile_positive_pixel_count(
-                args.inputImageFile,
-                tile_position,
-                tiparams,
-                ppc_params,
-                color_map,
-                useAlpha,
-                region_polygons,
-                args.style,
+            result, ppcimg, x, y, mask, tile_start_time = (
+                tile_positive_pixel_count(
+                    args.inputImageFile,
+                    tile_position,
+                    tiparams,
+                    ppc_params,
+                    color_map,
+                    useAlpha,
+                    region_polygons,
+                    args.style,
+                )
             )
             results.append(result)
             if sink:

@@ -10,3 +10,11 @@ body {
     background-color: #012169;
     color: white;
 }
+
+.sync-btns {
+    background-color: #2599c0;
+}
+
+.sync-btns:hover {
+    background-color: #2599c0; /* Change background color on hover */
+}

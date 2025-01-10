@@ -6,9 +6,6 @@ import xml.etree.ElementTree as ET
 def generate_cli_input_components(
     xml_string: str,
     params: dict | None = None,
-    # paramSetsToIgnore=("Frame and Style", "Dask", "Girder API URL and Key"),
-    # disabled=False,
-    # params=None,
 ) -> tuple[list, bool]:
     """Generate the CLI input components from the xml string.
 
@@ -20,32 +17,25 @@ def generate_cli_input_components(
         list: The list of dash components to render.
 
     """
-    # If parameters are passed then the inputs should be disabled.
-    disabled = False if params is None else True
-
-    params = {} if params is None else params
+    # If parameters are passed then disable the inputs fields.
+    disabled = not params is None
 
     # Format the xml string.
     root = ET.fromstring(xml_string)
 
-    components = [
-        html.H4("Inputs", className="card-title", style={"textAlign": "center"}),
-    ]
-
-    region_flag = False
+    rows = []
+    # tooltips = []  # tool tip causing errors when switching between CLIs
 
     for param in root.findall(".//parameters"):
-        if param.find("label") is not None and param.find("label").text != "IO":
+        if (
+            param.find("label") is not None
+            and param.find("label").text != "I/O"
+        ):
             continue
 
         for parameter in param:
             label_component = None
             input_component = None
-            tooltip_text = (
-                parameter.find("description").text
-                if parameter.find("description") is not None
-                else None
-            )
 
             tag = parameter.tag
 
@@ -55,20 +45,19 @@ def generate_cli_input_components(
 
                 input_id = parameter.find("name").text
 
-                value = (
-                    params[input_id]
-                    if input_id in params
-                    else parameter.find("default").text
-                )
+                if params is None:
+                    value = parameter.find("default").text
+                else:
+                    value = params[input_id]
 
                 if tag == "integer":
-                    label += " (integer)"
+                    label += " (integer):"
                     value = int(value)
                     step = 1
                 else:
-                    label += " (number)"
+                    label += " (number):"
                     value = float(value)
-                    step = 0.1
+                    step = 0.01
 
                 label_component = html.Label(label)
                 input_component = dcc.Input(
@@ -81,13 +70,14 @@ def generate_cli_input_components(
             elif tag == "string":
                 input_id = parameter.find("name").text
 
-                value = (
-                    params[input_id]
-                    if input_id in params
-                    else parameter.find("default").text
-                )
+                if params is None:
+                    value = parameter.find("default").text
+                else:
+                    value = params[input_id]
 
-                label_component = html.Label(parameter.find("label").text + " (text)")
+                label_component = html.Label(
+                    parameter.find("label").text + " (text):"
+                )
                 input_component = dcc.Input(
                     type="text",
                     id={"type": "dynamic-input", "index": input_id},
@@ -98,13 +88,12 @@ def generate_cli_input_components(
                 # These are specific options you can choose.
                 input_id = parameter.find("name").text
 
-                value = (
-                    params[input_id]
-                    if input_id in params
-                    else parameter.find("default").text
-                )
+                if params is None:
+                    value = parameter.find("default").text
+                else:
+                    value = params[input_id]
 
-                label_component = html.Label(parameter.find("label").text)
+                label_component = html.Label(parameter.find("label").text + ":")
 
                 options = [elem.text for elem in parameter.findall("element")]
 
@@ -113,33 +102,37 @@ def generate_cli_input_components(
                     options=[{"label": op, "value": op} for op in options],
                     value=value,
                     clearable=False,
-                    style={"minWidth": 300},
+                    style={"minWidth": 250},
                     disabled=disabled,
                 )
-            elif tag == "region":
-                region_flag = True
 
             if label_component is not None and input_component is not None:
-                components.append(
-                    html.Div(
-                        dbc.Row(
-                            [
-                                dbc.Col(label_component, width="auto"),
-                                dbc.Col(input_component, width="auto"),
-                            ],
-                            justify="start",
-                            align="center",
-                        ),
-                        style={"marginTop": 10},
+                rows.append(
+                    dbc.Row(
+                        [
+                            dbc.Col(label_component, width=6),
+                            dbc.Col(input_component, width=6),
+                        ],
+                        justify="start",
+                        align="center",
+                        style={"marginBottom": 10},
                     )
                 )
 
-                if tooltip_text is not None:
-                    tooltip = dbc.Tooltip(
-                        tooltip_text,
-                        target={"type": "dynamic-input", "index": input_id},
-                    )
+                # Check if there is a description for the parameter.
+                # description = parameter.find("description")
 
-                    components.append(tooltip)
+                # if description is not None:
+                #     description_text = description.text
 
-    return components, region_flag
+                # tooltips.append(
+                #     dbc.Tooltip(
+                #         description_text,
+                #         target={"type": "dynamic-input", "index": input_id},
+                #     )
+                # )
+
+    # Extend the rows with the tooltips.
+    # rows.extend(tooltips)
+
+    return html.Div(rows)

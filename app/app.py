@@ -1,19 +1,37 @@
 # Dash application.
 import dash_bootstrap_components as dbc
-from dash import Dash, html, dcc
-from components import stores, header, projects_tab, datasets_tab, tasks_tab
+from dash import Dash, html, dcc, CeleryManager
+from celery_worker import celery_app
+from dsa_helpers.dash.header import get_header
+from os import getenv
+
+from components.tabs.datasets_tab import datasets_tab
+from components.tabs.projects_tab import projects_tab
+from components.tabs.tasks_tab import tasks_tab
 
 app = Dash(
     __name__,
-    external_stylesheets=[dbc.themes.BOOTSTRAP],
+    title="NeuroTK",
+    external_stylesheets=[
+        dbc.themes.BOOTSTRAP,
+        dbc.icons.BOOTSTRAP,
+        dbc.icons.FONT_AWESOME,
+    ],
+    background_callback_manager=CeleryManager(celery_app),
 )
 
 app.layout = html.Div(
     [
-        stores,
-        header,
+        get_header(
+            getenv("DSA_API_URL"),
+            title="NeuroTK",
+            store_id=getenv("LOGIN_STORE_ID"),
+        ),
         dcc.Tabs(
-            [
+            value="tasks",
+            parent_className="custom-tabs",
+            className="custom-tabs-container",
+            children=[
                 dcc.Tab(
                     label="Datasets",
                     value="datasets",
@@ -36,9 +54,6 @@ app.layout = html.Div(
                     selected_className="custom-tab--selected",
                 ),
             ],
-            value="tasks",
-            parent_className="custom-tabs",
-            className="custom-tabs-container",
         ),
     ],
 )

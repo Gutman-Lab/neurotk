@@ -79,6 +79,13 @@
       <description>Intensity threshold in HSI space below which a pixel is considered negative (default tuned for aBeta).</description>
       <default>0.05</default>
     </float>
+    <string>
+      <name>region_name</name>
+      <label>Region Name</label>
+      <index>9</index>
+      <description>For NeuroTK functionality.</description>
+      <default></default>
+    </string>
     <image fileExtensions=".tiff" reference="inputImageFile">
       <name>outputLabelImage</name>
       <longflag>outputLabelImage</longflag>
