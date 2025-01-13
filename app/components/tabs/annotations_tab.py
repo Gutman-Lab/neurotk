@@ -3,6 +3,7 @@ import dash_bootstrap_components as dbc
 
 import callbacks.resync_annotations_btn_disabled
 import callbacks.resync_annotations
+import callbacks.update_annotation_document_dropdown
 
 annotations_tab = html.Div(
     [
@@ -25,7 +26,10 @@ annotations_tab = html.Div(
                 dbc.Col(html.Div("Annotation document:"), width="auto"),
                 dbc.Col(
                     dcc.Dropdown(
-                        options=[], value=None, id="annotation-dropdown"
+                        options=[],
+                        value=None,
+                        id="annotation-dropdown",
+                        clearable=False,
                     ),
                     width=4,
                 ),

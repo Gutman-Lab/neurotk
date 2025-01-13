@@ -21,7 +21,11 @@ tasks_tab = html.Div(
             ],
             justify="start",
             align="center",
-            style={"marginBottom": 10, "fontWeight": "bold", "color": "orange"},
+            style={
+                "marginBottom": 10,
+                "fontWeight": "bold",
+                "color": "orange",
+            },
         ),
         dbc.Row(
             [
