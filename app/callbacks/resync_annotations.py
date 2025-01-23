@@ -1,61 +1,19 @@
-from dash import callback, Output, Input, State, ctx
+from dash import callback, Output, Input, State, ctx, no_update
 from os import getenv
-from utils import get_mongo_database
 from girder_client import GirderClient
 from dsa_helpers.mongo_utils import add_many_to_collection
 
-
-@callback(
-    [
-        Output("annotation-dropdown", "options", allow_duplicate=True),
-        Output("annotation-dropdown", "value", allow_duplicate=True),
-    ],
-    [
-        Input("images-table", "rowData"),
-        Input("images-table", "filterModel"),
-        Input("images-table", "virtualRowData"),
-        State(getenv("LOGIN_STORE_ID"), "data"),
-    ],
-    prevent_initial_call=True,
-)
-def update_annotation_dropdown_from_mongo(
-    row_data, filter_model, virtual_row_data, user_data
-):
-    #
-    if filter_model is not None and len(filter_model):
-        row_data = virtual_row_data
-
-    if row_data is not None and len(row_data):
-        # Get the list item ids to check.
-        image_ids = [row["_id"] for row in row_data]
-
-        # Get all annotations from the database.
-        annotation_collection = get_mongo_database(user_data["user"])[
-            "annotations"
-        ]
-
-        ann_docs = list(
-            annotation_collection.find(
-                {"itemId": {"$in": image_ids}},
-                {"_id": 0, "annotation.name": 1},
-            )
-        )
-
-        # Get the unique annotation names.
-        doc_names = set([doc["annotation"]["name"] for doc in ann_docs])
-
-        # Create the dropdown options.
-        options = [name for name in doc_names]
-
-        return options, options[0] if len(options) else None
-
-    return [], None
+from utils import get_mongo_database
+from utils.girder_utils import get_item_annotation_docs
 
 
 @callback(
     [
-        Output("annotation-dropdown", "options", allow_duplicate=True),
-        Output("annotation-dropdown", "value", allow_duplicate=True),
+        Output("annotation-dropdown", "options"),
+        Output("annotation-dropdown", "value"),
+        Output("trigger-by-sync-ann", "data"),
+        Output("imgs-with-ann-table", "selectedRows", allow_duplicate=True),
+        Output("imgs-without-ann-table", "selectedRows", allow_duplicate=True),
     ],
     [
         Input("resync-annotations-btn", "n_clicks"),
@@ -63,130 +21,73 @@ def update_annotation_dropdown_from_mongo(
         State("images-table", "filterModel"),
         State("images-table", "virtualRowData"),
         State(getenv("LOGIN_STORE_ID"), "data"),
-    ],
-    running=[
-        (Output("resync-annotations-btn", "disabled"), True, False),
-        (
-            Output("resync-annotations-progress-row", "style"),
-            {"display": "block"},
-            {"display": "none"},
-        ),
-    ],
-    progress=[
-        Output("resync-annotations-progress", "value"),
-        Output("resync-annotations-progress", "max"),
+        State("trigger-by-sync-ann", "data"),
     ],
     prevent_initial_call=True,
-    background=True,
 )
-def resync_annotations(
-    set_progress, n_clicks, row_data, filter_model, virtual_row_data, user_data
+def sync_annotation_doc_dropdown(
+    n_clicks,
+    row_data,
+    filter_model,
+    virtual_row_data,
+    user_data,
+    triggered_data,
 ):
-    if n_clicks:
-        set_progress(("0", "100"))
+    """
+    When the sync annotation button is clicked, check the DSA for
+    annotation documents for images currently in the images table.
 
+    """
+    if n_clicks and (len(row_data) or len(virtual_row_data)) and user_data:
+        # Set the row data based on if filters are being used or not.
         if filter_model is not None and len(filter_model):
             row_data = virtual_row_data
 
-        if row_data is not None and len(row_data):
-            # Pull the annotations from the database.
-            gc = GirderClient(apiUrl=getenv("DSA_API_URL"))
-            gc.token = user_data["token"]
+        # Get all the image ids from the table.
+        image_ids = [row["_id"] for row in row_data]
 
-            # Get the list item ids to check.
-            image_ids = [row["_id"] for row in row_data]
+        # Get the annotations collection from mongodb.
+        mongodb = get_mongo_database(user_data["user"])
 
-            # Get all annotations from the database.
-            annotation_collection = get_mongo_database(user_data["user"])[
-                "annotations"
-            ]
+        annotations_collection = mongodb["annotations"]
 
-            # Remove all annotation documents for these images from database.
-            annotation_collection.delete_many({"itemId": {"$in": image_ids}})
+        # Delete all documents that have itemId key in image_ids.
+        annotations_collection.delete_many({"itemId": {"$in": image_ids}})
 
-            ann_docs = []
+        # Authenticate the girder client to check the DSA for annotations.
+        gc = GirderClient(apiUrl=getenv("DSA_API_URL"))
+        gc.token = user_data["token"]
 
-            n_str = str(len(image_ids))
-            set_progress(("0", n_str))
+        docs = []
 
-            for idx, image_id in enumerate(image_ids):
-                # Get the annotations from DSA.
-                ann_docs = gc.get(
-                    "annotation", parameters={"itemId": image_id, "limit": 0}
-                )
+        for img_meta in row_data:
+            # Get the documents for this image.
+            img_docs = get_item_annotation_docs(
+                gc, img_meta["_id"], with_elements=False
+            )
 
-                for ann_doc in ann_docs:
-                    if ann_doc.get("annotation", {}).get("name"):
-                        ann_docs.append(ann_doc)
+            # Append the documents to the list.
+            docs.extend(img_docs)
 
-                set_progress((str(idx + 1), n_str))
+        # Add the docs to the database.
+        if len(docs):
+            _ = add_many_to_collection(annotations_collection, docs)
 
-            if len(ann_docs):
-                # Update the database with the new annotations.
-                _ = add_many_to_collection(annotation_collection, ann_docs)
+        # Get the list of unique annotation names.
+        doc_names = set()
+        for doc in docs:
+            if doc_name := doc.get("annotation", {}).get("name"):
+                doc_names.add(doc_name)
 
-            # Get the unique annotation names.
-            doc_names = set([doc["annotation"]["name"] for doc in ann_docs])
+        # Return the options and the first value.
+        doc_names = list(doc_names)
 
-            # Create the dropdown options.
-            options = [name for name in doc_names]
+        return (
+            list(doc_names),
+            doc_names[0] if len(doc_names) else None,
+            not triggered_data,
+            [],
+            [],
+        )
 
-            return options, options[0] if len(options) else None
-
-    return [], None
-
-
-# @callback(
-#     Output("annotations-tab-content", "children", allow_duplicate=True),
-#     [
-#         State("images-table", "rowData"),
-#         State("images-table", "filterModel"),
-#         State("images-table", "virtualRowData"),
-#         State(getenv("LOGIN_STORE_ID"), "data"),
-#         Input("annotation-dropdown", "value"),
-#     ],
-#     prevent_initial_call=True,
-# )
-# def update_annotations_tab_content(
-#     row_data, filter_model, virtual_row_data, user_data, annotation_name
-# ):
-#     if filter_model is not None and len(filter_model):
-#         row_data = virtual_row_data
-
-#     if row_data is not None and len(row_data):
-#         # Get the list item ids to check.
-#         image_ids = [row["_id"] for row in row_data]
-
-#         # Get all annotations from the database.
-#         annotation_collection = get_mongo_database(user_data["user"])[
-#             "annotations"
-#         ]
-
-#         ann_docs = list(
-#             annotation_collection.find(
-#                 {
-#                     "itemId": {"$in": image_ids},
-#                     "annotation.name": annotation_name,
-#                 },
-#                 {"_id": 0, "itemId": 1, "annotation.name": 1},
-#             )
-#         )
-
-#         # Get the number of unique item ids in the docs.
-#         item_ids = set()
-#         for doc in ann_docs:
-#             item_ids.add(doc["itemId"])
-
-#         # Return the string.
-#         out = html.Div(
-#             [
-#                 html.Div(f"Images with document: {len(item_ids)}"),
-#                 html.Div(
-#                     f"Images without document: {len(image_ids) - len(item_ids)}"
-#                 ),
-#             ]
-#         )
-
-#         return out
-
-#     return []
+    return [], None, no_update, no_update, no_update

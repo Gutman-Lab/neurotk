@@ -100,7 +100,9 @@ def return_region_for_cli(
 
                 x1, y1 = int(xc - w / 2), int(yc - h / 2)
                 x2, y2 = int(xc + w / 2), int(yc + h / 2)
-                points.append(f"{x1}, {y1}, {x2}, {y1}, {x2}, {y2}, {x1}, {y2}")
+                points.append(
+                    f"{x1}, {y1}, {x2}, {y1}, {x2}, {y2}, {x1}, {y2}"
+                )
 
     points = delineator.join(points)
 
@@ -138,3 +140,48 @@ def dsa_ann_doc_to_input_to_paper(ann_doc):
         features.append(feature)
 
     return features
+
+
+def format_geojson_doc_to_input_to_paper_fts(doc):
+    """DG: This is a function to take the geoJson from the DSA and modify it to be more
+    in line with the format that the paperdragon expects. I think the paperdragon
+    expects the geojson to be in a feature collection format with the features being
+    the actual annotations. I think the DSA is just returning the features, so I
+    need to wrap it in a feature collection and then also add the type:
+    "FeatureCollection" to the top of the object. Currrently just getting the geojson
+    doc will eventually do sometihng with it! TO DO: MEET WITH TOM AND SEE IF I
+    CAN get rid of the strokeWidth thing. Currently do not appear to need to set
+    strokeWidth.. but do need to set rescale."""
+    # NOTE: hard-coded to only do the first doc.
+    if "features" in doc:
+        features = doc["features"]
+
+        for a in features:
+            geometry_type = a["geometry"]["type"]
+            coordinates = a["geometry"]["coordinates"]
+
+            a["properties"]["rescale"] = {"strokeWidth": 2}
+            a["properties"]["fillOpacity"] = 0.1
+            a["properties"]["strokeColor"] = a["properties"]["lineColor"]
+            a["properties"]["userdata"] = {
+                "objectId": a["properties"]["id"],
+                "class": a["properties"]["label"]["value"],
+                "shapeSource": "dsa",
+            }
+
+            ## Note required conversion as paperjs doesn't currently render polygons properly
+            if geometry_type == "Polygon":
+                a["geometry"]["type"] = "MultiPolygon"
+                adjusted_coordinates = [
+                    [
+                        [
+                            [int(coord) for coord in point[:2]]
+                            for point in coordinates[0]
+                        ]
+                    ]
+                ]
+                a["geometry"]["coordinates"] = adjusted_coordinates
+
+        return features
+
+    return []
