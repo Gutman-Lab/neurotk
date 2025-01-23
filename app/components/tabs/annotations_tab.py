@@ -1,5 +1,8 @@
 from dash import html, dcc
 import dash_bootstrap_components as dbc
+from components.annotation_tab_tables_and_img_viewer import (
+    annotation_tab_tables_and_img_viewer,
+)
 
 import callbacks.resync_annotations_btn_disabled
 import callbacks.resync_annotations
@@ -66,6 +69,7 @@ annotations_tab = html.Div(
             justify="start",
             style={"display": "none"},
         ),
+        annotation_tab_tables_and_img_viewer,
         html.Div(id="annotations-tab-content"),
     ],
     style={"marginTop": 10},

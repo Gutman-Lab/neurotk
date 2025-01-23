@@ -4,12 +4,3 @@ dash-bootstrap-components
 watchdog==4.0.1
 dash_ag_grid
 dash-paperdragon
-
-# watchdog==4.0.1
-# dash-bootstrap-components==1.6.0
-# girder-client==3.2.3
-# dash[celery]==2.17.1
-# dash_ag_grid==31.2.0
-# pandas==2.2.2
-# dsa_helpers==0.3.dev0
-# pymongo==4.8.0

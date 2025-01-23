@@ -1,4 +1,4 @@
-from dash import callback, Output, Input, State, ctx
+from dash import callback, Output, Input, State, ctx, no_update
 from os import getenv
 from girder_client import GirderClient
 from dsa_helpers.mongo_utils import add_many_to_collection
@@ -9,8 +9,11 @@ from utils.girder_utils import get_item_annotation_docs
 
 @callback(
     [
-        Output("annotation-dropdown", "options", allow_duplicate=True),
-        Output("annotation-dropdown", "value", allow_duplicate=True),
+        Output("annotation-dropdown", "options"),
+        Output("annotation-dropdown", "value"),
+        Output("trigger-by-sync-ann", "data"),
+        Output("imgs-with-ann-table", "selectedRows", allow_duplicate=True),
+        Output("imgs-without-ann-table", "selectedRows", allow_duplicate=True),
     ],
     [
         Input("resync-annotations-btn", "n_clicks"),
@@ -18,11 +21,17 @@ from utils.girder_utils import get_item_annotation_docs
         State("images-table", "filterModel"),
         State("images-table", "virtualRowData"),
         State(getenv("LOGIN_STORE_ID"), "data"),
+        State("trigger-by-sync-ann", "data"),
     ],
     prevent_initial_call=True,
 )
 def sync_annotation_doc_dropdown(
-    n_clicks, row_data, filter_model, virtual_row_data, user_data
+    n_clicks,
+    row_data,
+    filter_model,
+    virtual_row_data,
+    user_data,
+    triggered_data,
 ):
     """
     When the sync annotation button is clicked, check the DSA for
@@ -73,6 +82,12 @@ def sync_annotation_doc_dropdown(
         # Return the options and the first value.
         doc_names = list(doc_names)
 
-        return list(doc_names), doc_names[0] if len(doc_names) else None
+        return (
+            list(doc_names),
+            doc_names[0] if len(doc_names) else None,
+            not triggered_data,
+            [],
+            [],
+        )
 
-    return [], None
+    return [], None, no_update, no_update, no_update
